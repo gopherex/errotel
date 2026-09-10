@@ -1,0 +1,464 @@
+import * as React from 'react';
+import cx from 'classnames';
+import { atom, Provider, useAtomValue, useSetAtom } from 'jotai';
+import { useHydrateAtoms } from 'jotai/utils';
+import {
+  isArray,
+  isBoolean,
+  isNull,
+  isNumber,
+  isPlainObject,
+  isString,
+} from 'lodash';
+import { useHover } from '@mantine/hooks';
+import {
+  IconCaretDownFilled,
+  IconCaretRightFilled,
+  IconClipboard,
+} from '@tabler/icons-react';
+
+import styles from './HyperJson.module.scss';
+
+export type LineAction = {
+  key: string;
+  title?: string;
+  label: React.ReactNode;
+  onClick: () => void;
+};
+
+export type GetLineActions = (arg0: {
+  key: string;
+  keyPath: string[];
+  value: any;
+  isInParsedJson?: boolean;
+  parsedJsonRootPath?: string[];
+}) => LineAction[];
+
+export type FormatLeafValue = (arg0: {
+  keyName: string;
+  keyPath: string[];
+  value: unknown;
+}) => React.ReactNode | undefined;
+
+// Store common state in an atom so that it can be shared between components
+// to avoid prop drilling
+type HyperJsonAtom = {
+  normallyExpanded: boolean;
+  getLineActions?: GetLineActions;
+  formatLeafValue?: FormatLeafValue;
+};
+const hyperJsonAtom = atom<HyperJsonAtom>({
+  normallyExpanded: false,
+});
+
+// Errotel: retain large strings in data and reveal their full text only on demand.
+function StringValue({ value }: { value: string }) {
+  const [expanded, setExpanded] = React.useState(false);
+  if (value.length <= 512) return <>{JSON.stringify(value)}</>;
+  return <>{JSON.stringify(expanded ? value : value.slice(0, 256))}{' '}
+    <button type="button" className="json-string-expand" onClick={(event) => {
+      event.stopPropagation(); setExpanded(!expanded);
+    }}>{expanded ? 'Collapse string' : `Show full string (${value.length.toLocaleString()} characters)`}</button>
+  </>;
+}
+
+const ValueRenderer = React.memo(
+  ({ value, ref }: { value: any; ref?: React.Ref<HTMLSpanElement> }) => {
+    if (isNull(value)) {
+      return (
+        <span ref={ref} className={styles.null}>
+          null
+        </span>
+      );
+    }
+    if (isString(value)) {
+      return (
+        <span ref={ref} className={styles.string}>
+          <StringValue value={value} />
+        </span>
+      );
+    }
+    if (isNumber(value)) {
+      return (
+        <span ref={ref} className={styles.number}>
+          {value}
+        </span>
+      );
+    }
+    if (isBoolean(value)) {
+      return (
+        <span ref={ref} className={styles.boolean}>
+          {value ? 'true' : 'false'}
+        </span>
+      );
+    }
+    if (isPlainObject(value)) {
+      return (
+        <span ref={ref} className={styles.object}>
+          {'{}'} {Object.keys(value).length} keys
+        </span>
+      );
+    }
+    if (isArray(value)) {
+      return (
+        <span ref={ref} className={styles.array}>
+          {'[]'} {value.length} items
+        </span>
+      );
+    }
+    return null;
+  },
+);
+
+const LineMenu = React.memo(
+  ({
+    keyName,
+    keyPath,
+    value,
+    isInParsedJson,
+    parsedJsonRootPath,
+  }: {
+    keyName: string;
+    keyPath: string[];
+    value: any;
+    isInParsedJson?: boolean;
+    parsedJsonRootPath?: string[];
+  }) => {
+    const { getLineActions } = useAtomValue(hyperJsonAtom);
+
+    const lineActions = React.useMemo(() => {
+      if (getLineActions) {
+        return getLineActions({
+          key: keyName,
+          keyPath,
+          value,
+          isInParsedJson,
+          parsedJsonRootPath,
+        });
+      }
+      return [];
+    }, [
+      getLineActions,
+      keyName,
+      keyPath,
+      value,
+      isInParsedJson,
+      parsedJsonRootPath,
+    ]);
+
+    return (
+      <div className={styles.lineMenu}>
+        {lineActions.map(action => (
+          <button
+            key={action.key}
+            title={action.title}
+            className={styles.lineMenuBtn}
+            onClick={e => {
+              action.onClick();
+              e.stopPropagation();
+            }}
+          >
+            {action.label}
+          </button>
+        ))}
+      </div>
+    );
+  },
+);
+
+const Line = React.memo(
+  ({
+    keyName,
+    keyPath: parentKeyPath,
+    value,
+    disableMenu,
+    isInParsedJson = false,
+    parsedJsonRootPath,
+  }: {
+    keyName: string;
+    keyPath: string[];
+    value: any;
+    disableMenu: boolean;
+    isInParsedJson?: boolean;
+    parsedJsonRootPath?: string[];
+  }) => {
+    const { normallyExpanded } = useAtomValue(hyperJsonAtom);
+
+    // For performance reasons, render LineMenu only when hovered instead of
+    // mounting it for potentially hundreds of lines
+    const { ref, hovered } = useHover<HTMLDivElement>();
+
+    // Errotel snapshots preserve string values; never parse nested JSON strings.
+    const isStringValueValidJson = false;
+
+    const [isExpanded, setIsExpanded] = React.useState(
+      normallyExpanded && !isStringValueValidJson,
+    );
+
+    React.useEffect(() => {
+      setIsExpanded(normallyExpanded && !isStringValueValidJson);
+    }, [isStringValueValidJson, normallyExpanded]);
+
+    const isExpandable = React.useMemo(
+      () =>
+        (isPlainObject(value) && Object.keys(value).length > 0) ||
+        (isArray(value) && value.length > 0) ||
+        isStringValueValidJson,
+      [isStringValueValidJson, value],
+    );
+
+    const handleToggle = React.useCallback(() => {
+      if (!isExpandable) return;
+      setIsExpanded(prev => !prev);
+    }, [isExpandable]);
+
+    const expandedData = React.useMemo(() => {
+      if (isStringValueValidJson) {
+        try {
+          return JSON.parse(value);
+        } catch {
+          return null;
+        }
+      }
+      return value;
+    }, [isStringValueValidJson, value]);
+
+    const { formatLeafValue } = useAtomValue(hyperJsonAtom);
+
+    const nestedLevel = parentKeyPath.length;
+    const keyPath = React.useMemo(
+      () => [...parentKeyPath, keyName],
+      [keyName, parentKeyPath],
+    );
+
+    const formattedLeafValue = React.useMemo(() => {
+      if (formatLeafValue == null) {
+        return undefined;
+      }
+      return formatLeafValue({ keyName, keyPath, value });
+    }, [formatLeafValue, keyName, keyPath, value]);
+
+    // Determine the context for nested parsed JSON
+    const childIsInParsedJson = isInParsedJson || isStringValueValidJson;
+    const childParsedJsonRootPath = React.useMemo(() => {
+      if (isStringValueValidJson) {
+        // This is the start of a new parsed JSON context
+        return keyPath;
+      }
+      return parsedJsonRootPath ?? [];
+    }, [isStringValueValidJson, keyPath, parsedJsonRootPath]);
+
+    // Hide LineMenu when selecting text in the value
+    const valueRef = React.useRef<HTMLSpanElement>(null);
+    const [isSelectingValue, setIsSelectingValue] = React.useState(false);
+    const handleValueSelectStart = React.useCallback(() => {
+      setIsSelectingValue(true);
+    }, []);
+    const handleValueMouseUp = React.useCallback(() => {
+      setIsSelectingValue(false);
+    }, []);
+    React.useEffect(() => {
+      const _valueRef = valueRef.current;
+      _valueRef?.addEventListener('selectstart', handleValueSelectStart);
+      _valueRef?.addEventListener('mouseup', handleValueMouseUp);
+      return () => {
+        _valueRef?.removeEventListener('selectstart', handleValueSelectStart);
+        _valueRef?.removeEventListener('mouseup', handleValueMouseUp);
+      };
+    }, [handleValueMouseUp, handleValueSelectStart]);
+
+    return (
+      <>
+        <div
+          ref={ref}
+          data-testid="json-viewer-line"
+          onClick={handleToggle}
+          className={cx(styles.line, {
+            [styles.nestedLine]: nestedLevel > 0,
+            [styles.expanded]: isExpanded,
+            [styles.expandable]: isExpandable,
+          })}
+          style={{ marginLeft: nestedLevel * 16 }}
+          key={keyName}
+        >
+          <div className={styles.keyContainer}>
+            <div className={styles.key}>
+              {isExpandable &&
+                (isExpanded ? (
+                  <IconCaretDownFilled size={10} />
+                ) : (
+                  <IconCaretRightFilled size={10} />
+                ))}
+              {keyName}
+              <div className={styles.hoverContent}>
+                <IconClipboard size={14} />
+              </div>
+            </div>
+          </div>
+          <div className={styles.valueContainer}>
+            {isStringValueValidJson ? (
+              isExpanded ? (
+                <div className={styles.object}>{'{}'} Parsed JSON</div>
+              ) : (
+                <>
+                  <ValueRenderer value={value} ref={valueRef} />
+                  <div className={styles.jsonBtn}>Expand JSON</div>
+                </>
+              )
+            ) : formattedLeafValue !== undefined ? (
+              <span ref={valueRef} className={styles.string}>
+                {formattedLeafValue}
+              </span>
+            ) : (
+              <ValueRenderer value={value} ref={valueRef} />
+            )}
+          </div>
+          {hovered && !disableMenu && !isSelectingValue && (
+            <LineMenu
+              keyName={keyName}
+              keyPath={keyPath}
+              value={value}
+              isInParsedJson={isInParsedJson}
+              parsedJsonRootPath={parsedJsonRootPath}
+            />
+          )}
+        </div>
+        {isExpanded && isExpandable && (
+          <TreeNode
+            data={expandedData}
+            keyPath={keyPath}
+            disableMenu={disableMenu}
+            isInParsedJson={childIsInParsedJson}
+            parsedJsonRootPath={childParsedJsonRootPath}
+          />
+        )}
+      </>
+    );
+  },
+);
+
+const MAX_TREE_NODE_ITEMS = 50;
+function TreeNode({
+  data,
+  keyPath: _keyPath,
+  disableMenu = false,
+  isInParsedJson = false,
+  parsedJsonRootPath,
+}: {
+  data: object;
+  keyPath?: string[];
+  disableMenu?: boolean;
+  isInParsedJson?: boolean;
+  parsedJsonRootPath?: string[];
+}) {
+  const [isExpanded, setIsExpanded] = React.useState(false);
+
+  const keyPath = React.useMemo(() => _keyPath ?? [], [_keyPath]);
+
+  const originalLength = React.useMemo(() => Object.keys(data).length, [data]);
+
+  // ClickHouse hands back `Map(...)` keys in physical storage order, which reads
+  // as random for wide maps like `ProfileEvents`. Sorting here (rather than
+  // upstream) covers every nesting level for free, since TreeNode recurses, and
+  // it puts the sort ahead of the MAX_TREE_NODE_ITEMS slice below so the
+  // truncated view shows a predictable prefix instead of an arbitrary subset.
+  const entries = React.useMemo(() => {
+    const raw = Object.entries(data);
+    // Arrays are index-keyed — reordering them would change the data.
+    if (isArray(data)) {
+      return raw;
+    }
+    return raw.sort(([a], [b]) =>
+      a.localeCompare(b, undefined, { numeric: true }),
+    );
+  }, [data]);
+
+  const visibleLines = React.useMemo(() => {
+    return isExpanded ? entries : entries.slice(0, MAX_TREE_NODE_ITEMS);
+  }, [entries, isExpanded]);
+  const nestedLevel = keyPath?.length || 0;
+
+  return (
+    <>
+      {visibleLines.map(([key, value]) => (
+        <Line
+          key={key}
+          keyName={key}
+          value={value}
+          keyPath={keyPath}
+          disableMenu={disableMenu}
+          isInParsedJson={isInParsedJson}
+          parsedJsonRootPath={parsedJsonRootPath}
+        />
+      ))}
+      {originalLength > MAX_TREE_NODE_ITEMS && !isExpanded && (
+        <div
+          className={cx(styles.line, styles.nestedLine, styles.expandable)}
+          style={{ marginLeft: nestedLevel * 16 }}
+          onClick={() => setIsExpanded(true)}
+        >
+          <div className={styles.keyContainer}>
+            <div className={styles.jsonBtn}>
+              Expand {originalLength - MAX_TREE_NODE_ITEMS} more properties
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// Hydrate + allow to use this component multiple times on the same page
+const HydrateAtoms = ({
+  children,
+  initialValues,
+}: {
+  initialValues: HyperJsonAtom;
+  children: React.ReactElement;
+}) => {
+  useHydrateAtoms([[hyperJsonAtom, initialValues]]);
+  const set = useSetAtom(hyperJsonAtom);
+  React.useEffect(() => {
+    set(initialValues);
+  }, [initialValues, set]);
+  return children;
+};
+
+type HyperJsonProps = {
+  data: object;
+  normallyExpanded?: boolean;
+  tabulate?: boolean;
+  whiteSpace?: 'pre' | 'pre-wrap';
+  getLineActions?: GetLineActions;
+  formatLeafValue?: FormatLeafValue;
+};
+
+const HyperJson = ({
+  data,
+  normallyExpanded = false,
+  tabulate = false,
+  whiteSpace = 'pre-wrap',
+  getLineActions,
+  formatLeafValue,
+}: HyperJsonProps) => {
+  const isEmpty = React.useMemo(() => Object.keys(data).length === 0, [data]);
+
+  return (
+    <Provider>
+      <HydrateAtoms
+        initialValues={{ normallyExpanded, getLineActions, formatLeafValue }}
+      >
+        <div
+          className={cx(styles.container, {
+            [styles.withTabulate]: tabulate,
+            [styles.withPreWrap]: whiteSpace === 'pre-wrap',
+          })}
+        >
+          {isEmpty ? <div>{JSON.stringify(data)}</div> : <TreeNode data={data} />}
+        </div>
+      </HydrateAtoms>
+    </Provider>
+  );
+};
+
+export default HyperJson;

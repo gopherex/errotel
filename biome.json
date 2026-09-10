@@ -1,0 +1,58 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.4.16/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "ignoreUnknown": false,
+    "includes": [
+      "**",
+      "!node_modules",
+      "!.git",
+      "!.idea",
+      "!**/dist",
+      "!**/bin",
+      "!packages/api/src/gen",
+      "!packages/sdk/src/protocol.ts",
+      "!services/errotel/internal/envelope/app-debug-v1.schema.json",
+      "!openapi/openapi.json",
+      "!services/errotel/internal/discovery/openapi.json",
+      "!docs/SPEC.md",
+      "!docs/protocol.ts",
+      "!docs/app-debug-v1.schema.json",
+      "!app/src/vendor"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true
+    }
+  },
+  "assist": {
+    "enabled": false
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "jsxQuoteStyle": "double",
+      "semicolons": "asNeeded",
+      "trailingCommas": "es5",
+      "arrowParentheses": "always",
+      "bracketSpacing": true
+    }
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  }
+}

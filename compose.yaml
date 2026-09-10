@@ -1,0 +1,45 @@
+name: errotel-local
+services:
+  victorialogs:
+    image: victoriametrics/victoria-logs:v1.52.0@sha256:47b820890d64c4575a2a0a46415dcd8a4fd59a0f1fcd6a377693d7aea639442e
+    command: ["-storageDataPath=/data", "-retentionPeriod=7d", "-insert.maxLineSizeBytes=2MiB"]
+    ports: ["127.0.0.1:19428:9428"]
+    volumes: ["logs:/data"]
+  victoriatraces:
+    image: victoriametrics/victoria-traces:v0.11.0@sha256:9947b14b6b9baa61b8efef64467a7118ee54ccd6be6b7c1849f6fdd65d8e17fd
+    command: ["-storageDataPath=/data", "-retentionPeriod=7d"]
+    ports: ["127.0.0.1:20428:10428"]
+    volumes: ["traces:/data"]
+  victoriametrics:
+    image: victoriametrics/victoria-metrics:v1.151.0@sha256:6d164540a04f49ba4e696cbdb70f9fee78be1e94b8f2a1292743a0b1ab8275bd
+    command: ["-storageDataPath=/data", "-retentionPeriod=7d"]
+    ports: ["127.0.0.1:18428:8428"]
+    volumes: ["metrics:/data"]
+  collector:
+    image: otel/opentelemetry-collector:0.147.0@sha256:b66294ff3a9eadc446ec4d0e78b6f4980c2a85b0ccc27f2cdc4641bd0fe401a7
+    command: ["--config=/etc/otelcol/config.yaml"]
+    ports: ["127.0.0.1:14318:4318"]
+    volumes: ["./deploy/otel-collector.yaml:/etc/otelcol/config.yaml:ro"]
+    depends_on: [victorialogs, victoriatraces]
+  errotel:
+    build:
+      context: .
+      dockerfile: services/errotel/Dockerfile
+    ports: ["127.0.0.1:18080:8080"]
+    environment:
+      APP_DEBUG_API_TOKEN: "${APP_DEBUG_API_TOKEN:-local-synthetic-only}"
+    volumes: ["./deploy/local.yaml:/etc/errotel/config.yaml:ro"]
+    depends_on: [victorialogs, victoriatraces, victoriametrics]
+  example:
+    profiles: [fixtures]
+    image: node:22.23.1-bookworm-slim@sha256:6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3
+    working_dir: /workspace
+    command: ["sh", "-c", "yarn install --frozen-lockfile && yarn example --host 0.0.0.0"]
+    volumes: [".:/workspace", "example-deps:/workspace/node_modules"]
+    ports: ["127.0.0.1:14173:14173"]
+    depends_on: [victorialogs, victoriatraces]
+volumes:
+  logs:
+  traces:
+  metrics:
+  example-deps:

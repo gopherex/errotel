@@ -1,0 +1,14 @@
+parser:
+  infer_types: true
+  allow_remote: false
+generator:
+  convenient_errors: "on"
+  ignore_not_implemented: []
+  features:
+    enable:
+      - paths/client
+      - paths/server
+      - server/response/validation
+      - client/request/validation
+    disable:
+      - ogen/otel

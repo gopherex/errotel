@@ -1,0 +1,250 @@
+.container {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  flex-direction: column;
+  padding: var(--mantine-spacing-xs);
+  font-size: 12px;
+  font-family: var(--font-ibm-plex-mono);
+}
+
+.withTabulate {
+  .keyContainer {
+    // `min()` keeps the floor inside the 50% cap so the key
+    // column also can't overflow into the value column in narrow panels.
+    min-width: min(150px, 50%);
+  }
+}
+
+.withPreWrap {
+  .valueContainer {
+    .string {
+      white-space: pre-wrap;
+    }
+  }
+}
+
+.treeNode {
+  margin-left: 10px;
+}
+
+.line {
+  display: flex;
+  gap: 10px;
+  padding: 2px 8px;
+  align-items: flex-start;
+  border-radius: 3px;
+  position: relative;
+  overflow: hidden;
+
+  &:hover {
+    background-color: var(--color-bg-highlighted);
+
+    .lineMenu {
+      display: flex;
+    }
+  }
+
+  &.expanded {
+    .object,
+    .array {
+      color: var(--color-text-muted);
+    }
+  }
+
+  &.expandable {
+    cursor: pointer;
+
+    .key {
+      margin-left: -10px;
+    }
+
+    .valueContainer {
+      margin-left: 10px;
+      word-break: break-all;
+    }
+
+    &:active {
+      background-color: var(--color-bg-highlighted);
+    }
+  }
+}
+
+.lineMenu {
+  display: none;
+  align-items: center;
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: calc(100% + 1px);
+  max-height: 24px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.lineMenuBtn {
+  border: 0;
+  background-color: rgb(0 0 0 / 20%);
+  backdrop-filter: blur(4px);
+  color: var(--color-text);
+  border-left: 1px solid var(--color-border);
+  padding: 0 8px;
+  height: 100%;
+
+  &:hover {
+    background-color: var(--color-bg-highlighted);
+  }
+
+  &:active {
+    background-color: var(--color-bg-muted);
+  }
+}
+
+.clickable {
+  &:active {
+    background-color: var(--color-bg-highlighted);
+  }
+}
+
+.hoverable {
+  position: relative;
+  cursor: pointer;
+  padding: 0 4px;
+  margin: 0 -4px;
+  border-radius: 2px;
+  display: flex;
+  gap: 6px;
+
+  &:hover,
+  &:focus {
+    background-color: var(--color-bg-muted);
+
+    .hoverContent {
+      display: flex;
+    }
+  }
+
+  .hoverContent {
+    position: absolute;
+    left: 100%;
+    background-color: var(--color-bg-muted);
+    padding-right: 8px;
+    padding-left: 4px;
+  }
+}
+
+.hoverContent {
+  display: none;
+}
+
+.jsonBtn {
+  display: block;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  background-color: var(--color-bg-muted);
+  font-size: 11px;
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  padding: 0 6px;
+  margin-bottom: 2px;
+
+  &:hover {
+    background-color: var(--color-border);
+  }
+
+  &:active {
+    background-color: var(--color-bg-highlighted);
+  }
+}
+
+.keyContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+
+  // Cap the key column so long keys (e.g. `longtask.attribution.entry_type`)
+  // can't stretch the row and squeeze the value column to nothing
+  max-width: 50%;
+  min-width: 0;
+}
+
+.key {
+  align-items: center;
+  width: auto;
+  color: var(--color-json-key);
+  cursor: pointer;
+  display: flex;
+  gap: 6px;
+
+  // Wrap unbroken keys (dots don't break) within the keyContainer cap
+  overflow-wrap: anywhere;
+
+  // @extend .hoverable;
+  // @extend .clickable;
+
+  i {
+    color: var(--color-json-punctuation);
+    margin-right: -4px;
+  }
+}
+
+.valueContainer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 3px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.value {
+  max-width: 100%;
+  white-space: pre-wrap;
+  word-wrap: anywhere;
+  overflow-wrap: anywhere;
+  overflow: hidden;
+
+  @extend .hoverable;
+  @extend .clickable;
+}
+
+.string {
+  color: var(--color-json-string);
+  white-space: pre;
+
+  // `anywhere` (vs `break-word`) so when wrapping is enabled long
+  // unbroken tokens like URLs/paths break instead of overflowing
+  overflow-wrap: anywhere;
+
+  &::before,
+  &::after {
+    content: '"';
+    color: var(--color-json-punctuation);
+  }
+}
+
+.number {
+  color: var(--color-json-number);
+}
+
+.boolean {
+  color: var(--color-json-boolean);
+}
+
+.object {
+  color: var(--color-json-object);
+  font-size: 11px;
+}
+
+.array {
+  color: var(--color-json-array);
+  font-size: 11px;
+}
+
+.expandMoreProps {
+  color: var(--color-json-number);
+  font-weight: 500;
+
+  i {
+    margin-left: 4px;
+  }
+}

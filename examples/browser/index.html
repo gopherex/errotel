@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8" /><meta name="viewport" content="width=device-width" /><title>Errotel synthetic browser example</title></head>
+  <body>
+    <h1>Synthetic browser telemetry</h1>
+    <p>This example sends to your local test VictoriaLogs and VictoriaTraces. It does not use the Errotel server.</p>
+    <p><label>Logs OTLP endpoint <input id="logs" size="65" value="http://127.0.0.1:14318/v1/logs" /></label></p>
+    <p><label>Traces OTLP endpoint <input id="traces" size="65" value="http://127.0.0.1:14318/v1/traces" /></label></p>
+    <button id="capture" type="button">Capture synthetic error</button>
+    <button id="seed" type="button">Seed diagnostic cases</button>
+    <pre id="result" aria-live="polite"></pre>
+    <script type="module" src="/main.ts"></script>
+  </body>
+</html>

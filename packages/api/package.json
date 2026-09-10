@@ -1,0 +1,42 @@
+{
+  "name": "@gopherex/errotel-api",
+  "version": "0.1.0",
+  "type": "module",
+  "sideEffects": false,
+  "license": "MIT",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "generate": "openapi-ts && node ../../scripts/api-esm.mjs",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hey-api/client-fetch": "0.10.0"
+  },
+  "devDependencies": {
+    "@hey-api/openapi-ts": "0.64.0"
+  },
+  "description": "Generated HTTP client and types for the ErrOtel read API",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gopherex/errotel.git",
+    "directory": "packages/api"
+  },
+  "homepage": "https://github.com/gopherex/errotel#readme",
+  "bugs": {
+    "url": "https://github.com/gopherex/errotel/issues"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  }
+}

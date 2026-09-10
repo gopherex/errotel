@@ -1,0 +1,56 @@
+name: CI
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  checks:
+    name: Contracts, lint, unit tests and published packages
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22.23.1
+          cache: yarn
+      - name: Pin Yarn
+        run: corepack enable && corepack prepare yarn@1.22.22 --activate
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
+        with:
+          go-version-file: services/errotel/go.mod
+          cache-dependency-path: services/errotel/go.sum
+      - run: yarn install --frozen-lockfile
+      - run: make ci
+      - name: Validate GitHub Actions workflows
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 -shellcheck= .github/workflows/*.yml
+  vm:
+    name: Real VM integration and browser round-trip
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22.23.1
+          cache: yarn
+      - run: corepack enable && corepack prepare yarn@1.22.22 --activate
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
+        with:
+          go-version-file: services/errotel/go.mod
+          cache-dependency-path: services/errotel/go.sum
+      - run: yarn install --frozen-lockfile
+      - run: yarn build:packages
+      - run: make ci-vm
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: failure()
+        with:
+          name: browser-failure
+          path: test-results/
+          retention-days: 7
+      - name: Stop synthetic infrastructure
+        if: always()
+        run: docker compose down --volumes

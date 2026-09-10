@@ -1,0 +1,14 @@
+listen: 0.0.0.0:8080
+token_env: APP_DEBUG_API_TOKEN
+source: local-synthetic
+logs:
+  base_url: http://victorialogs:9428
+traces:
+  base_url: http://victoriatraces:10428/select/jaeger
+metrics:
+  base_url: http://victoriametrics:8428
+# Production image contains the built UI; API configuration remains external.
+ui_dir: /opt/errotel/ui
+
+# Explicit browser OTLP origin for the test-error modal; not an ingest endpoint.
+ui_connect_origins: [http://127.0.0.1:14318]

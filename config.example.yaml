@@ -1,0 +1,41 @@
+listen: 127.0.0.1:8080
+ui_dir: ../../app/dist
+token_env: APP_DEBUG_API_TOKEN
+source: default
+logs:
+  base_url: http://127.0.0.1:19428
+  headers_env: VM_LOGS_READ_HEADERS_JSON
+traces:
+  base_url: http://127.0.0.1:20428/select/jaeger
+  headers_env: VM_TRACES_READ_HEADERS_JSON
+metrics:
+  base_url: http://127.0.0.1:18428
+  headers_env: VM_METRICS_READ_HEADERS_JSON
+fields:
+  time: _time
+  body: _msg
+  traceId: trace_id
+  spanId: span_id
+  severityNumber: severity_number
+trusted_proxies: []
+auth:
+  burst: 5
+  per_minute: 10
+  max_peers: 10000
+cache:
+  max_bytes: 268435456
+  max_entry_bytes: 16777216
+  search_ttl: 5s
+  detail_ttl: 30s
+  trace_ttl: 5s
+  negative_ttl: 1s
+queries:
+  timeout: 5s
+  max_page_size: 200
+  max_range: 168h
+  max_offset: 100000
+  max_detail_rows: 1000
+  concurrency: 16
+
+# Explicit browser OTLP origin for the test-error modal; not an ingest endpoint.
+ui_connect_origins: [http://127.0.0.1:14318]

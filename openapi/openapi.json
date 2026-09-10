@@ -1,0 +1,2101 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Errotel read API",
+    "version": "1.0.0"
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/investigate": {
+      "post": {
+        "operationId": "investigate",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvestigationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "InvestigationResponse",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestigationResponse"
+                }
+              }
+            },
+            "headers": {
+              "X-Errotel-Cache": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Errotel-Fetched-At": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Errotel-Cache-Age-Ms": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "ApiError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/facets": {
+      "post": {
+        "operationId": "getFacets",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FacetRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "FacetResponse",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FacetResponse"
+                }
+              }
+            },
+            "headers": {
+              "X-Errotel-Cache": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Errotel-Fetched-At": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Errotel-Cache-Age-Ms": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "ApiError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/capabilities": {
+      "get": {
+        "operationId": "getCapabilities",
+        "responses": {
+          "200": {
+            "description": "Capabilities",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Capabilities"
+                }
+              }
+            },
+            "headers": {
+              "X-Errotel-Cache": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Errotel-Fetched-At": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Errotel-Cache-Age-Ms": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "ApiError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/alerts/prepare": {
+      "post": {
+        "operationId": "prepareAlert",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlertPreparation"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "AlertConfiguration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertConfiguration"
+                }
+              }
+            },
+            "headers": {
+              "X-Errotel-Cache": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Errotel-Fetched-At": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Errotel-Cache-Age-Ms": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "ApiError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/occurrences/search": {
+      "post": {
+        "operationId": "searchOccurrences",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OccurrenceSearch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "SearchResponse",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            },
+            "headers": {
+              "X-Errotel-Cache": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Errotel-Fetched-At": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Errotel-Cache-Age-Ms": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "ApiError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/occurrences/histogram": {
+      "post": {
+        "operationId": "getHistogram",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OccurrenceSearch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "HistogramResponse",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistogramResponse"
+                }
+              }
+            },
+            "headers": {
+              "X-Errotel-Cache": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Errotel-Fetched-At": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Errotel-Cache-Age-Ms": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "ApiError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/occurrences/{ref}": {
+      "get": {
+        "operationId": "getOccurrence",
+        "parameters": [
+          {
+            "name": "ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OccurrenceDetail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OccurrenceDetail"
+                }
+              }
+            },
+            "headers": {
+              "X-Errotel-Cache": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Errotel-Fetched-At": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Errotel-Cache-Age-Ms": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "ApiError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/occurrences/{ref}/related": {
+      "post": {
+        "operationId": "getRelatedLogs",
+        "parameters": [
+          {
+            "name": "ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RelatedRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "RelatedResponse",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelatedResponse"
+                }
+              }
+            },
+            "headers": {
+              "X-Errotel-Cache": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Errotel-Fetched-At": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Errotel-Cache-Age-Ms": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "ApiError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/traces/{traceId}": {
+      "get": {
+        "operationId": "getTrace",
+        "parameters": [
+          {
+            "name": "traceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "TraceResponse",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TraceResponse"
+                }
+              }
+            },
+            "headers": {
+              "X-Errotel-Cache": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Errotel-Fetched-At": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Errotel-Cache-Age-Ms": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "ApiError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "DebugEnvelopeV1": {
+        "title": "App Debug exception envelope — wire version 1",
+        "description": "Draft v0.1. JSON stored as the stringValue of a standard OTLP LogRecord Body. No application state size limit is imposed by this schema.",
+        "type": "object",
+        "properties": {
+          "schema": {
+            "const": "app-debug"
+          },
+          "schemaVersion": {
+            "const": 1
+          },
+          "kind": {
+            "const": "exception"
+          },
+          "eventId": {
+            "$ref": "#/components/schemas/Wire_id"
+          },
+          "timestampUnixNano": {
+            "$ref": "#/components/schemas/Wire_unixNano"
+          },
+          "monotonicMs": {
+            "type": "number",
+            "minimum": 0
+          },
+          "runtime": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/Wire_id"
+              },
+              "sequence": {
+                "$ref": "#/components/schemas/Wire_sequence"
+              }
+            },
+            "required": [
+              "id",
+              "sequence"
+            ],
+            "additionalProperties": true
+          },
+          "exception": {
+            "$ref": "#/components/schemas/Wire_exception"
+          },
+          "trace": {
+            "$ref": "#/components/schemas/Wire_trace"
+          },
+          "state": {
+            "type": "object",
+            "properties": {
+              "sources": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Wire_snapshot"
+                }
+              },
+              "inline": {
+                "$ref": "#/components/schemas/Wire_capturedValue"
+              }
+            },
+            "required": [
+              "sources"
+            ],
+            "additionalProperties": true
+          },
+          "history": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "sinceUnixNano": {
+                "$ref": "#/components/schemas/Wire_unixNano"
+              },
+              "evictedCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Wire_historyEntry"
+                }
+              }
+            },
+            "required": [
+              "enabled",
+              "sinceUnixNano",
+              "evictedCount",
+              "items"
+            ],
+            "additionalProperties": true
+          },
+          "groupKey": {
+            "type": "string",
+            "minLength": 1
+          },
+          "extensions": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Wire_json"
+            }
+          }
+        },
+        "required": [
+          "schema",
+          "schemaVersion",
+          "kind",
+          "eventId",
+          "timestampUnixNano",
+          "monotonicMs",
+          "runtime",
+          "exception",
+          "state",
+          "history"
+        ],
+        "additionalProperties": true
+      },
+      "Wire_json": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "string"
+          },
+          {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Wire_json"
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Wire_json"
+            }
+          }
+        ]
+      },
+      "Wire_id": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+      },
+      "Wire_unixNano": {
+        "type": "string",
+        "pattern": "^(0|[1-9][0-9]*)$"
+      },
+      "Wire_sequence": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      },
+      "Wire_diagnostic": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "stage": {
+            "enum": [
+              "read",
+              "serialize",
+              "validate",
+              "capture"
+            ]
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "stage"
+        ],
+        "additionalProperties": true
+      },
+      "Wire_trace": {
+        "type": "object",
+        "properties": {
+          "traceId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$",
+            "not": {
+              "const": "00000000000000000000000000000000"
+            }
+          },
+          "spanId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{16}$",
+            "not": {
+              "const": "0000000000000000"
+            }
+          },
+          "traceFlags": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+          },
+          "origin": {
+            "enum": [
+              "active",
+              "explicit"
+            ]
+          }
+        },
+        "required": [
+          "traceId",
+          "origin"
+        ],
+        "additionalProperties": true
+      },
+      "Wire_capturedValue": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "const": "ok"
+              },
+              "value": {
+                "$ref": "#/components/schemas/Wire_json"
+              }
+            },
+            "required": [
+              "status",
+              "value"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "const": "error"
+              },
+              "error": {
+                "$ref": "#/components/schemas/Wire_diagnostic"
+              }
+            },
+            "required": [
+              "status",
+              "error"
+            ],
+            "additionalProperties": true
+          }
+        ]
+      },
+      "Wire_exception": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "stacktrace": {
+            "type": "string"
+          },
+          "mechanism": {
+            "enum": [
+              "manual",
+              "window.error",
+              "unhandledrejection"
+            ]
+          },
+          "handled": {
+            "type": "boolean"
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string"
+              },
+              "line": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "column": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "mechanism"
+        ],
+        "additionalProperties": true
+      },
+      "Wire_snapshot": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Wire_capturedValue"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "registrationId": {
+                "$ref": "#/components/schemas/Wire_id"
+              },
+              "capturedAtUnixNano": {
+                "$ref": "#/components/schemas/Wire_unixNano"
+              },
+              "monotonicMs": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "name",
+              "registrationId",
+              "capturedAtUnixNano",
+              "monotonicMs"
+            ],
+            "additionalProperties": true
+          }
+        ]
+      },
+      "Wire_historyEntry": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/Wire_id"
+              },
+              "sequence": {
+                "$ref": "#/components/schemas/Wire_sequence"
+              },
+              "timestampUnixNano": {
+                "$ref": "#/components/schemas/Wire_unixNano"
+              },
+              "monotonicMs": {
+                "type": "number",
+                "minimum": 0
+              },
+              "trace": {
+                "$ref": "#/components/schemas/Wire_trace"
+              },
+              "kind": {
+                "const": "breadcrumb"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "data": {
+                "$ref": "#/components/schemas/Wire_capturedValue"
+              }
+            },
+            "required": [
+              "id",
+              "sequence",
+              "timestampUnixNano",
+              "monotonicMs",
+              "kind",
+              "name"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/Wire_id"
+              },
+              "sequence": {
+                "$ref": "#/components/schemas/Wire_sequence"
+              },
+              "timestampUnixNano": {
+                "$ref": "#/components/schemas/Wire_unixNano"
+              },
+              "monotonicMs": {
+                "type": "number",
+                "minimum": 0
+              },
+              "trace": {
+                "$ref": "#/components/schemas/Wire_trace"
+              },
+              "kind": {
+                "const": "state"
+              },
+              "snapshot": {
+                "$ref": "#/components/schemas/Wire_snapshot"
+              }
+            },
+            "required": [
+              "id",
+              "sequence",
+              "timestampUnixNano",
+              "monotonicMs",
+              "kind",
+              "snapshot"
+            ],
+            "additionalProperties": true
+          }
+        ]
+      },
+      "TimeRange": {
+        "type": "object",
+        "properties": {
+          "startUnixNano": {
+            "$ref": "#/components/schemas/Wire_unixNano"
+          },
+          "endUnixNano": {
+            "$ref": "#/components/schemas/Wire_unixNano"
+          }
+        },
+        "required": [
+          "startUnixNano",
+          "endUnixNano"
+        ],
+        "additionalProperties": false,
+        "description": "Absolute UTC Unix nanoseconds encoded as decimal strings. Start inclusive, end exclusive. Use capabilities.serverTimeUnixNano as a clock reference; respect maxRangeMs."
+      },
+      "SearchFilter": {
+        "type": "object",
+        "properties": {
+          "op": {
+            "type": "string",
+            "enum": [
+              "and",
+              "or",
+              "not",
+              "eq",
+              "contains",
+              "icontains",
+              "prefix",
+              "exists"
+            ]
+          },
+          "field": {
+            "type": "string",
+            "enum": [
+              "service",
+              "environment",
+              "exceptionType",
+              "message",
+              "release",
+              "traceId",
+              "runtimeId",
+              "groupKey",
+              "origin"
+            ]
+          },
+          "value": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SearchFilter"
+            },
+            "maxItems": 64
+          }
+        },
+        "required": [
+          "op"
+        ],
+        "additionalProperties": false,
+        "description": "Allowlisted AST, never raw LogsQL. and/or require nonempty children; not requires one child. Leaf operators require field and value (except exists). Use explicit grouping."
+      },
+      "OccurrenceSearch": {
+        "type": "object",
+        "properties": {
+          "range": {
+            "$ref": "#/components/schemas/TimeRange"
+          },
+          "service": {
+            "type": "string"
+          },
+          "environment": {
+            "type": "string"
+          },
+          "exceptionType": {
+            "type": "string"
+          },
+          "messageContains": {
+            "type": "string"
+          },
+          "traceId": {
+            "type": "string"
+          },
+          "runtimeId": {
+            "type": "string"
+          },
+          "groupKey": {
+            "type": "string"
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "sdk",
+              "otel-log",
+              "both"
+            ]
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200
+          },
+          "cursor": {
+            "type": "string"
+          },
+          "filter": {
+            "$ref": "#/components/schemas/SearchFilter"
+          }
+        },
+        "required": [
+          "range"
+        ],
+        "additionalProperties": false
+      },
+      "OccurrenceSummary": {
+        "type": "object",
+        "properties": {
+          "ref": {
+            "type": "string"
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "sdk",
+              "otel-log"
+            ]
+          },
+          "eventId": {
+            "type": "string"
+          },
+          "timestampUnixNano": {
+            "$ref": "#/components/schemas/Wire_unixNano"
+          },
+          "service": {
+            "type": "string"
+          },
+          "environment": {
+            "type": "string"
+          },
+          "release": {
+            "type": "string"
+          },
+          "exceptionType": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "severityNumber": {
+            "type": "integer"
+          },
+          "traceId": {
+            "type": "string"
+          },
+          "spanId": {
+            "type": "string"
+          },
+          "runtimeId": {
+            "type": "string"
+          },
+          "contextStatus": {
+            "type": "string",
+            "enum": [
+              "not_loaded",
+              "absent",
+              "invalid",
+              "unsupported_version"
+            ]
+          }
+        },
+        "required": [
+          "ref",
+          "origin",
+          "timestampUnixNano",
+          "contextStatus"
+        ],
+        "additionalProperties": false
+      },
+      "Meta": {
+        "type": "object",
+        "properties": {
+          "queryStatus": {
+            "type": "string",
+            "enum": [
+              "complete",
+              "partial"
+            ]
+          },
+          "servedFrom": {
+            "type": "string",
+            "enum": [
+              "upstream",
+              "cache"
+            ]
+          },
+          "fetchedAt": {
+            "type": "string"
+          },
+          "cacheAgeMs": {
+            "type": "integer"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "queryStatus",
+          "servedFrom",
+          "fetchedAt",
+          "warnings"
+        ],
+        "additionalProperties": false
+      },
+      "SearchResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OccurrenceSummary"
+            }
+          },
+          "range": {
+            "$ref": "#/components/schemas/TimeRange"
+          },
+          "nextCursor": {
+            "type": "string"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "items",
+          "range",
+          "meta"
+        ],
+        "additionalProperties": false
+      },
+      "HistogramResponse": {
+        "type": "object",
+        "properties": {
+          "range": {
+            "$ref": "#/components/schemas/TimeRange"
+          },
+          "intervalMs": {
+            "type": "integer"
+          },
+          "buckets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "startUnixNano": {
+                  "type": "string"
+                },
+                "endUnixNano": {
+                  "type": "string"
+                },
+                "count": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "startUnixNano",
+                "endUnixNano",
+                "count"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "range",
+          "intervalMs",
+          "buckets",
+          "total",
+          "meta"
+        ],
+        "additionalProperties": false
+      },
+      "AlertPreparation": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "$ref": "#/components/schemas/SearchFilter"
+          },
+          "name": {
+            "type": "string",
+            "pattern": "^[a-zA-Z_][a-zA-Z0-9_]{0,63}$"
+          },
+          "windowSeconds": {
+            "type": "integer",
+            "minimum": 10,
+            "maximum": 604800
+          },
+          "intervalSeconds": {
+            "type": "integer",
+            "minimum": 5,
+            "maximum": 3600
+          },
+          "forSeconds": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 604800
+          },
+          "threshold": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000000000
+          },
+          "labels": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "maxProperties": 16
+          },
+          "namespace": {
+            "type": "string",
+            "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$"
+          },
+          "receiver": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_-]{1,64}$"
+          },
+          "newTelegramReceiver": {
+            "type": "boolean"
+          },
+          "searchUrl": {
+            "type": "string",
+            "maxLength": 16384
+          }
+        },
+        "required": [
+          "name",
+          "windowSeconds",
+          "intervalSeconds",
+          "forSeconds",
+          "threshold",
+          "labels",
+          "namespace",
+          "receiver",
+          "newTelegramReceiver",
+          "searchUrl"
+        ],
+        "additionalProperties": false
+      },
+      "AlertConfiguration": {
+        "type": "object",
+        "properties": {
+          "expression": {
+            "type": "string"
+          },
+          "rulesYaml": {
+            "type": "string"
+          },
+          "vmRuleYaml": {
+            "type": "string"
+          },
+          "alertmanagerYaml": {
+            "type": "string"
+          },
+          "instructions": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "mappingRevision": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "expression",
+          "rulesYaml",
+          "vmRuleYaml",
+          "alertmanagerYaml",
+          "instructions",
+          "source",
+          "mappingRevision"
+        ],
+        "additionalProperties": false
+      },
+      "Payload": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "available"
+                ]
+              },
+              "value": {
+                "$ref": "#/components/schemas/DebugEnvelopeV1"
+              }
+            },
+            "required": [
+              "status",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "absent",
+                  "invalid",
+                  "unsupported_version"
+                ]
+              },
+              "raw": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "status"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "OccurrenceDetail": {
+        "type": "object",
+        "properties": {
+          "summary": {
+            "$ref": "#/components/schemas/OccurrenceSummary"
+          },
+          "exception": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "stacktrace": {
+                "type": "string"
+              },
+              "mechanism": {
+                "type": "string",
+                "enum": [
+                  "manual",
+                  "window.error",
+                  "unhandledrejection"
+                ]
+              },
+              "handled": {
+                "type": "boolean"
+              },
+              "location": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string"
+                  },
+                  "line": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "column": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [],
+                "additionalProperties": true
+              }
+            },
+            "required": [],
+            "additionalProperties": true
+          },
+          "payload": {
+            "$ref": "#/components/schemas/Payload"
+          },
+          "storedFields": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "summary",
+          "exception",
+          "payload",
+          "storedFields",
+          "warnings"
+        ],
+        "additionalProperties": false
+      },
+      "Capabilities": {
+        "type": "object",
+        "properties": {
+          "apiVersion": {
+            "type": "string"
+          },
+          "serverTimeUnixNano": {
+            "$ref": "#/components/schemas/Wire_unixNano"
+          },
+          "filterFields": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "service",
+                "environment",
+                "exceptionType",
+                "message",
+                "release",
+                "traceId",
+                "runtimeId",
+                "groupKey",
+                "origin"
+              ]
+            }
+          },
+          "filterOperators": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "and",
+                "or",
+                "not",
+                "eq",
+                "contains",
+                "icontains",
+                "prefix",
+                "exists"
+              ]
+            }
+          },
+          "facetFields": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "service",
+                "environment",
+                "release"
+              ]
+            }
+          },
+          "maxOffset": {
+            "type": "integer"
+          },
+          "source": {
+            "type": "string"
+          },
+          "features": {
+            "type": "object",
+            "properties": {
+              "grouping": {
+                "type": "boolean"
+              },
+              "snapshotDiff": {
+                "type": "boolean"
+              },
+              "traces": {
+                "type": "boolean"
+              },
+              "metrics": {
+                "type": "boolean"
+              },
+              "queryFilters": {
+                "type": "boolean"
+              },
+              "histogram": {
+                "type": "boolean"
+              },
+              "alertExport": {
+                "type": "boolean"
+              },
+              "investigation": {
+                "type": "boolean"
+              },
+              "facets": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "grouping",
+              "snapshotDiff",
+              "traces",
+              "metrics",
+              "queryFilters",
+              "histogram",
+              "alertExport",
+              "investigation",
+              "facets"
+            ],
+            "additionalProperties": false
+          },
+          "maxPageSize": {
+            "type": "integer"
+          },
+          "maxRangeMs": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "apiVersion",
+          "serverTimeUnixNano",
+          "filterFields",
+          "filterOperators",
+          "facetFields",
+          "maxOffset",
+          "source",
+          "features",
+          "maxPageSize",
+          "maxRangeMs"
+        ],
+        "additionalProperties": false
+      },
+      "RelatedRequest": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "same_span",
+              "same_trace",
+              "same_runtime",
+              "time_window"
+            ]
+          },
+          "range": {
+            "$ref": "#/components/schemas/TimeRange"
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "additionalProperties": false
+      },
+      "RelationEvidence": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "same_span",
+              "same_trace",
+              "same_runtime",
+              "time_window"
+            ]
+          },
+          "traceId": {
+            "type": "string"
+          },
+          "spanId": {
+            "type": "string"
+          },
+          "runtimeId": {
+            "type": "string"
+          },
+          "range": {
+            "$ref": "#/components/schemas/TimeRange"
+          },
+          "service": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "additionalProperties": false
+      },
+      "RelatedLog": {
+        "type": "object",
+        "properties": {
+          "timestampUnixNano": {
+            "type": "string"
+          },
+          "fields": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "timestampUnixNano",
+          "fields"
+        ],
+        "additionalProperties": false
+      },
+      "RelatedData": {
+        "type": "object",
+        "properties": {
+          "evidence": {
+            "$ref": "#/components/schemas/RelationEvidence"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RelatedLog"
+            }
+          }
+        },
+        "required": [
+          "evidence",
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "TraceSpan": {
+        "type": "object",
+        "properties": {
+          "spanId": {
+            "type": "string"
+          },
+          "parentSpanId": {
+            "type": "string"
+          },
+          "operation": {
+            "type": "string"
+          },
+          "service": {
+            "type": "string"
+          },
+          "startUnixNano": {
+            "type": "string"
+          },
+          "durationNano": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "logs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": [
+          "spanId",
+          "operation",
+          "service",
+          "startUnixNano",
+          "durationNano",
+          "tags",
+          "logs"
+        ],
+        "additionalProperties": false
+      },
+      "TraceData": {
+        "type": "object",
+        "properties": {
+          "traceId": {
+            "type": "string"
+          },
+          "completeness": {
+            "type": "string",
+            "enum": [
+              "unknown",
+              "partial"
+            ]
+          },
+          "spans": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TraceSpan"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "traceId",
+          "completeness",
+          "spans",
+          "warnings"
+        ],
+        "additionalProperties": false
+      },
+      "RelatedResponse": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "available"
+                ]
+              },
+              "data": {
+                "$ref": "#/components/schemas/RelatedData"
+              }
+            },
+            "required": [
+              "status",
+              "data"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "partial"
+                ]
+              },
+              "data": {
+                "$ref": "#/components/schemas/RelatedData"
+              },
+              "reason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "data",
+              "reason"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "not_found",
+                  "unavailable",
+                  "not_configured"
+                ]
+              },
+              "reason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "status"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "TraceResponse": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "available"
+                ]
+              },
+              "data": {
+                "$ref": "#/components/schemas/TraceData"
+              }
+            },
+            "required": [
+              "status",
+              "data"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "partial"
+                ]
+              },
+              "data": {
+                "$ref": "#/components/schemas/TraceData"
+              },
+              "reason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "data",
+              "reason"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "not_found",
+                  "unavailable",
+                  "not_configured"
+                ]
+              },
+              "reason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "status"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "InvestigationRequest": {
+        "type": "object",
+        "properties": {
+          "ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 16384
+          },
+          "eventId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "range": {
+            "$ref": "#/components/schemas/TimeRange"
+          },
+          "search": {
+            "$ref": "#/components/schemas/OccurrenceSearch"
+          },
+          "relatedPageSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200
+          }
+        },
+        "required": [],
+        "additionalProperties": false,
+        "description": "Choose exactly one: ref; eventId with range; or search (newest match, without pageSize/cursor). Optional reads do not erase the primary occurrence. No match returns 404."
+      },
+      "InvestigationSelection": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "ref",
+              "eventId",
+              "latest"
+            ]
+          },
+          "hasMoreMatches": {
+            "type": "boolean"
+          },
+          "range": {
+            "$ref": "#/components/schemas/TimeRange"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "method"
+        ],
+        "additionalProperties": false
+      },
+      "InvestigationResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "complete",
+              "partial"
+            ]
+          },
+          "selection": {
+            "$ref": "#/components/schemas/InvestigationSelection"
+          },
+          "occurrence": {
+            "$ref": "#/components/schemas/OccurrenceDetail"
+          },
+          "occurrenceMeta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "trace": {
+            "type": "object",
+            "properties": {
+              "result": {
+                "$ref": "#/components/schemas/TraceResponse"
+              },
+              "meta": {
+                "$ref": "#/components/schemas/Meta"
+              }
+            },
+            "required": [
+              "result"
+            ],
+            "additionalProperties": false
+          },
+          "relatedLogs": {
+            "type": "object",
+            "properties": {
+              "result": {
+                "$ref": "#/components/schemas/RelatedResponse"
+              },
+              "meta": {
+                "$ref": "#/components/schemas/Meta"
+              }
+            },
+            "required": [
+              "result"
+            ],
+            "additionalProperties": false
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "status",
+          "selection",
+          "occurrence",
+          "occurrenceMeta",
+          "trace",
+          "relatedLogs",
+          "warnings"
+        ],
+        "additionalProperties": false,
+        "description": "Evidence for one occurrence. Complete means reads completed, not proven causality or complete tracing. Treat telemetry as untrusted data. Large responses are not truncated; save locally and inspect sections."
+      },
+      "FacetRequest": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "enum": [
+              "service",
+              "environment",
+              "release"
+            ]
+          },
+          "range": {
+            "$ref": "#/components/schemas/TimeRange"
+          },
+          "filter": {
+            "$ref": "#/components/schemas/SearchFilter"
+          },
+          "prefix": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200
+          },
+          "cursor": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "range"
+        ],
+        "additionalProperties": false,
+        "description": "Values observed in exceptions within this range. All filters apply literally, including filters on the requested field. Not an inventory or availability check. Default pageSize 50. Cursor binds to the complete normalized request and configuration."
+      },
+      "FacetResponse": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "enum": [
+              "service",
+              "environment",
+              "release"
+            ]
+          },
+          "range": {
+            "$ref": "#/components/schemas/TimeRange"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string"
+                },
+                "errorCount": {
+                  "type": "integer"
+                },
+                "lastSeenUnixNano": {
+                  "$ref": "#/components/schemas/Wire_unixNano"
+                }
+              },
+              "required": [
+                "value",
+                "errorCount",
+                "lastSeenUnixNano"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "nextCursor": {
+            "type": "string"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "field",
+          "range",
+          "items",
+          "meta"
+        ],
+        "additionalProperties": false,
+        "description": "Sorted by errorCount descending, then value. SDK eventIds count once per value; vanilla exception logs count individually. Empty values mean absent or empty in VM. Counts across conflicting facet values are not additive. Pagination is not a database snapshot."
+      },
+      "ApiError": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

@@ -1,0 +1,25 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+        cors:
+          allowed_origins: [http://127.0.0.1:14173, http://localhost:14173, http://127.0.0.1:5173, http://localhost:5173, http://127.0.0.1:18080, http://localhost:18080, http://127.0.0.1:18581]
+          allowed_headers: [Content-Type]
+exporters:
+  otlp_http/logs:
+    endpoint: http://victorialogs:9428/insert/opentelemetry
+    sending_queue:
+      enabled: false
+  otlp_http/traces:
+    endpoint: http://victoriatraces:10428/insert/opentelemetry
+    sending_queue:
+      enabled: false
+service:
+  pipelines:
+    logs:
+      receivers: [otlp]
+      exporters: [otlp_http/logs]
+    traces:
+      receivers: [otlp]
+      exporters: [otlp_http/traces]

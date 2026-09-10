@@ -1,0 +1,46 @@
+{
+  "name": "errotel",
+  "private": true,
+  "packageManager": "yarn@1.22.22",
+  "workspaces": [
+    "packages/*",
+    "app"
+  ],
+  "scripts": {
+    "contracts": "node scripts/sync-contracts.mjs",
+    "build": "yarn generate && yarn workspace @gopherex/errotel-api build && yarn workspace @gopherex/errotel-sdk build && yarn workspace @errotel/ui build",
+    "dev": "yarn workspace @errotel/ui dev",
+    "test": "vitest run",
+    "test:e2e": "yarn test:browser",
+    "typecheck": "yarn workspace @gopherex/errotel-sdk typecheck && yarn workspace @errotel/ui typecheck",
+    "generate": "yarn contracts && node scripts/openapi.mjs && yarn workspace @gopherex/errotel-api generate",
+    "format": "biome format --write .",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "lint:go": "make lint-go",
+    "check": "yarn lint && yarn typecheck && yarn test && make lint-go test-go",
+    "example": "vite --config examples/browser/vite.config.ts",
+    "build:backend": "make build-server",
+    "build:packages": "yarn generate && yarn workspace @gopherex/errotel-api build && yarn workspace @gopherex/errotel-sdk build",
+    "test:integration": "make test-integration",
+    "test:browser": "playwright test --config tests/browser/playwright.config.ts",
+    "seed": "node scripts/seed.mjs",
+    "typecheck:core": "tsc -p tsconfig.core.json",
+    "lint:core": "biome check packages/sdk packages/api examples scripts tests package.json tsconfig.core.json vitest.config.ts"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.16",
+    "@opentelemetry/api": "1.9.1",
+    "@opentelemetry/api-logs": "0.222.0",
+    "@opentelemetry/exporter-trace-otlp-proto": "0.222.0",
+    "@opentelemetry/resources": "2.11.0",
+    "@opentelemetry/sdk-trace-base": "2.11.0",
+    "@playwright/test": "1.63.0",
+    "@types/node": "22.18.6",
+    "ajv": "8.17.1",
+    "typescript": "5.9.3",
+    "vite": "8.2.2",
+    "vitest": "5.0.0"
+  },
+  "type": "module"
+}
