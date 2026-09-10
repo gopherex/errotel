@@ -786,3 +786,6 @@ cross-compiled; native runtime smoke testing runs on Linux amd64.
 The UI dev server resolves SDK/API workspace sources directly; `cd app && yarn dev`
 needs only `yarn install --frozen-lockfile` at the workspace root, not a previous
 package build. Production builds and published consumers use package exports.
+
+The root `yarn typecheck` builds API/SDK declarations before checking the UI,
+so `make ci` and `yarn run check` also work in a fresh checkout without `dist`.
