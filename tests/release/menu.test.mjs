@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { execFileSync } from 'node:child_process'
 import { releaseMenu } from '../../scripts/release-menu.mjs'
 
 async function choose(answers, latest) {
@@ -41,4 +42,17 @@ test('existing release supports numeric bump, recreation and cancellation', asyn
   for (const answers of [['3'], ['garbage'], ['1', 'garbage']])
     assert.deepEqual((await choose(answers, '0.4.9')).result, { kind: 'cancel' })
   await assert.rejects(choose(['2']), /No release tag to recreate/)
+})
+
+test('make release keeps the interactive menu while build-server injects its version', () => {
+  const invoke = (...args) =>
+    execFileSync('make', ['--no-print-directory', '-n', ...args], {
+      cwd: new URL('../..', import.meta.url),
+      encoding: 'utf8',
+      env: { ...process.env, MAKEFLAGS: '', VERSION: '' },
+    }).trim()
+  assert.equal(invoke('release'), 'node scripts/release.mjs')
+  assert.equal(invoke('release', 'VERSION=1.2.3'), 'node scripts/release.mjs 1.2.3')
+  assert.match(invoke('build-server'), /internal\/build\.Version=\d+\.\d+\.\d+/)
+  assert.match(invoke('build-server', 'VERSION=1.2.3'), /internal\/build\.Version=1\.2\.3/)
 })

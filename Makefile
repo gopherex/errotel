@@ -1,10 +1,10 @@
 GO_DIR := services/errotel
 PLAYWRIGHT_INSTALL_FLAGS ?=
-VERSION ?= $(shell node -p "require('./packages/sdk/package.json').version")
+BUILD_VERSION ?= $(if $(VERSION),$(VERSION),$(shell node -p "require('./packages/sdk/package.json').version"))
 COMMIT ?= $(shell git rev-parse HEAD)
 BUILD_TIME ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 BUILD_PKG := github.com/gopherex/errotel/services/errotel/internal/build
-LDFLAGS := -s -w -X $(BUILD_PKG).Version=$(VERSION) -X $(BUILD_PKG).Commit=$(COMMIT) -X $(BUILD_PKG).BuildTime=$(BUILD_TIME)
+LDFLAGS := -s -w -X $(BUILD_PKG).Version=$(BUILD_VERSION) -X $(BUILD_PKG).Commit=$(COMMIT) -X $(BUILD_PKG).BuildTime=$(BUILD_TIME)
 GOLANGCI_VERSION := v2.11.3
 GOLANGCI := $(CURDIR)/bin/golangci-lint
 
