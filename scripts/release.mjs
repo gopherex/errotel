@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
 import { createInterface } from 'node:readline/promises'
+import { releaseMenu } from './release-menu.mjs'
 import { checkVersion, manifests, setVersion, versionOf } from './release-version.mjs'
 
 const git = (...args) => execFileSync('git', args, { encoding: 'utf8' }).trim()
@@ -37,22 +37,37 @@ const latest = published.at(-1)
 let target = versionArg
 const prompt = createInterface({ input: process.stdin, output: process.stdout })
 try {
+  let action = { kind: 'bump', version: target }
   if (!target) {
-    if (!process.stdin.isTTY)
-      throw new Error('Use make release VERSION=X.Y.Z (or release-plan) outside a terminal')
-    const current = latest ?? JSON.parse(readFileSync(manifests[0])).version
-    const [major, minor, patch] = current.split('.').map(Number)
-    const choices = latest
-      ? [`${major}.${minor}.${patch + 1}`, `${major}.${minor + 1}.0`, `${major + 1}.0.0`]
-      : [current]
-    console.log(`Latest published tag: ${latest ? `v${latest}` : 'none'}`)
-    choices.forEach((value, i) => {
-      console.log(`${i + 1}) v${value}`)
-    })
-    target = choices[Number(await prompt.question('Version (number; anything else cancels): ')) - 1]
-    if (!target) process.exit(0)
+    action = await releaseMenu(
+      (question) => prompt.question(question),
+      latest,
+      git('rev-parse', '--short', 'HEAD')
+    )
+    if (action.kind === 'cancel') process.exit(0)
+    target = action.version
+  }
+  if (action.kind === 'recreate') {
+    checkVersion(target)
+    const tag = `v${target}`
+    console.log(
+      `Will DELETE and recreate tag ${tag} on ${git('rev-parse', '--short', 'HEAD')}, then force-push.`
+    )
+    if (dryRun) {
+      console.log('Dry run: no files, commits, tags or remote refs changed.')
+    } else {
+      if ((await prompt.question("Type 'yes' to proceed: ")) !== 'yes') process.exit(0)
+      if (git('tag', '-l', tag)) run('git', ['tag', '-d', tag])
+      if (published.includes(target)) run('git', ['push', 'origin', `:refs/tags/${tag}`])
+      run('git', ['tag', '-a', tag, '-m', tag])
+      run('git', ['push', 'origin', '--force', `refs/tags/${tag}`])
+      console.log(`Recreated ${tag} on HEAD.`)
+    }
+    process.exit(0)
   }
   target = versionOf(target)
+  if (Number(target.split('.')[0]) > 1)
+    throw new Error('v2+ requires a versioned Go module path; stay on v0/v1.')
   const tag = `v${target}`
   if (
     remoteRefs.includes(`refs/tags/${tag}\n`) ||
@@ -76,7 +91,7 @@ try {
   if (dryRun) {
     console.log('Dry run: no files, commits, tags or remote refs changed.')
   } else {
-    if ((await prompt.question("Type 'yes' to release: ")) !== 'yes') process.exit(0)
+    if ((await prompt.question("Type 'yes' to proceed: ")) !== 'yes') process.exit(0)
     setVersion(target)
     run('yarn', ['install', '--frozen-lockfile'])
     run('make', ['ci'])

@@ -704,8 +704,22 @@ projects: `master` pushes and pull requests run CI; an annotated `vX.Y.Z` tag
 runs the same CI before publication. `make release` offers a version selection,
 updates both packages and the UI's workspace dependencies, validates locally,
 creates a `chore(release)` commit when needed, then atomically pushes master and
-the tag. It requires a clean working tree and refuses existing or older versions.
-Tags and published package versions are immutable; there is no force-republish.
+the tag. It requires a clean working tree. The menu matches `gopherex/iam`:
+`1` bump version, `2` recreate last tag on HEAD (force), `3` cancel. Bump then
+asks `1` major, `2` minor, `3` patch. With no tags the starting version is 0.0.0:
+choose `1`, then `2` for the first 0.1.0 release. Final confirmation is `yes`.
+Explicit-version bump releases refuse existing or older versions; recreation is
+available through the separate interactive action and requires package versions
+to match the tag. Like the neighboring projects, v2+ needs a Go module path change.
+
+Recreation deletes and replaces the existing tag after confirmation. For npm
+republishing, configure the optional `PACKAGES_TOKEN` secret with package read,
+write and delete permissions, as in `gopherex/iam`. This workflow uses that PAT
+for existing-version deletion and GITHUB_TOKEN for publication. Without it, first publication works,
+but publishing an already existing version fails. The workflow replaces that
+version when the PAT is configured and updates existing GitHub Release assets.
+This development operation changes an already distributed version; use a bump
+for normal production releases.
 
 ```sh
 yarn install --frozen-lockfile
@@ -729,7 +743,7 @@ GitHub Actions publishes:
 
 Publication uses the repository's automatic `GITHUB_TOKEN` with narrowly scoped
 `packages: write` / `contents: write` permissions; no npmjs token or long-lived
-publish PAT is required. Actions and organization policy must allow package
+publish PAT is required for new versions. Actions and organization policy must allow package
 creation. Package visibility and access are controlled in GitHub package settings;
 check these after first publication, especially for anonymous container pulls.
 The `repository` metadata associates both npm packages with this repository.
@@ -763,10 +777,10 @@ and pass the token at runtime. No secrets are part of the frontend build.
 
 GitHub/npm/container publication is not one atomic transaction. On a partial
 release, inspect the failed job and use GitHub's **Re-run failed jobs**; successful
-package jobs must not republish their immutable version. A failed atomic Git push
+package jobs need not be rerun; republishing them requires PACKAGES_TOKEN. A failed atomic Git push
 leaves the local release commit/tag intact: fix the cause and retry the same
 `git push --atomic origin HEAD:refs/heads/master refs/tags/vX.Y.Z` after confirming
-the remote refs. Do not recreate published tags. Cross-platform archives are
+the remote refs. Use the explicit recreate action only when you intend to replace a version. Cross-platform archives are
 cross-compiled; native runtime smoke testing runs on Linux amd64.
 
 The UI dev server resolves SDK/API workspace sources directly; `cd app && yarn dev`

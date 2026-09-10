@@ -97,6 +97,27 @@ jobs:
         with:
           name: release-assets
           path: dist/release
+      # Same optional republish permission as gopherex/iam: this workflow uses
+      # PACKAGES_TOKEN to delete existing versions before force republication.
+      - name: Delete existing npm version when republishing is configured
+        env:
+          GH_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          PACKAGE: ${{ matrix.package }}
+          ORG: ${{ github.repository_owner }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo 'PACKAGES_TOKEN absent: first publication works; an existing version cannot be republished.'
+            exit 0
+          fi
+          versions="$(gh api --paginate "/orgs/${ORG}/packages/npm/errotel-${PACKAGE}/versions" 2>/dev/null)" || {
+            echo 'No existing package found or package metadata unavailable; publish will report any remaining error.'
+            exit 0
+          }
+          ids="$(printf '%s' "$versions" | jq -r --arg version "$VERSION" '.[] | select(.name == $version) | .id')"
+          for id in $ids; do
+            gh api -X DELETE "/orgs/${ORG}/packages/npm/errotel-${PACKAGE}/versions/${id}"
+          done
       - name: Publish tested tarball to GitHub Packages
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -136,4 +157,8 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           docker buildx imagetools create --tag ghcr.io/gopherex/errotel:latest "ghcr.io/gopherex/errotel:${VERSION}"
-          gh release create "$TAG" dist/release/* --verify-tag --generate-notes --title "$TAG"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/release/* --clobber
+          else
+            gh release create "$TAG" dist/release/* --verify-tag --generate-notes --title "$TAG"
+          fi

@@ -41,7 +41,12 @@ test('release dry run leaves git untouched; dirty trees and existing tags fail',
     git('init', '-b', 'master')
     git('config', 'user.name', 'Release Test')
     git('config', 'user.email', 'release@example.invalid')
-    for (const file of [...manifests, 'scripts/release.mjs', 'scripts/release-version.mjs']) {
+    for (const file of [
+      ...manifests,
+      'scripts/release.mjs',
+      'scripts/release-version.mjs',
+      'scripts/release-menu.mjs',
+    ]) {
       mkdirSync(dirname(join(work, file)), { recursive: true })
       cpSync(resolve(file), join(work, file))
     }
