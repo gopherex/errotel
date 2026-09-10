@@ -338,8 +338,9 @@ Pinned test infrastructure: VictoriaLogs **1.52.0**, VictoriaTraces **0.11.0**,
 VictoriaMetrics/vmalert **1.151.0**, Collector **0.147.0**, Alertmanager **0.32.1**.
 Browser OTel API **1.9.1**, logs/protobuf exporter **0.222.0**, resource/trace SDK **2.11.0**.
 Service OTel trace/metric SDK **1.46.0**, Prometheus exporter **0.68.0**, host/runtime **0.70.0**;
-logs SDK/exporter **0.14.0** matches the published `xtrace/xlog` bridge **1.0.0**. Providers
-are assembled directly to avoid the older resource schema hard-coded by `xtrace/sdk`.
+logs SDK/exporter **0.22.0** matches the published `xtrace/xlog` and `xlog/otel` bridges
+**1.0.2**. Service libraries: xconf **1.1.2**, xlog **1.0.2**, xprobe/xshutdown **1.0.0**.
+Providers are assembled directly to control resource attributes, exporter selection and lifecycle.
 
 ## Limits and licenses
 
