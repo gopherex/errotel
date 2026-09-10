@@ -1,6 +1,6 @@
 {
   "name": "@errotel/ui",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,8 +9,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@gopherex/errotel-api": "0.1.0",
-    "@gopherex/errotel-sdk": "0.1.0",
+    "@gopherex/errotel-api": "1.0.0",
+    "@gopherex/errotel-sdk": "1.0.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "@mantine/core": "9.6.1",
