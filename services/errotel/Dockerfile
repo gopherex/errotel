@@ -15,12 +15,15 @@ RUN go mod download
 COPY services/errotel/ ./
 ARG TARGETOS
 ARG TARGETARCH
-RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -o /errotel ./cmd/errotel
+ARG VERSION=dev
+ARG COMMIT=unknown
+ARG BUILD_TIME=unknown
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags "-s -w -X github.com/gopherex/errotel/services/errotel/internal/build.Version=$VERSION -X github.com/gopherex/errotel/services/errotel/internal/build.Commit=$COMMIT -X github.com/gopherex/errotel/services/errotel/internal/build.BuildTime=$BUILD_TIME" -o /errotel ./cmd/errotel
 
 FROM alpine:3.23.3
 RUN apk add --no-cache ca-certificates && adduser -D -u 10001 errotel
 COPY --from=build /errotel /usr/local/bin/errotel
 COPY --from=ui /workspace/app/dist /opt/errotel/ui
 USER errotel
-EXPOSE 8080
+EXPOSE 8080 8081
 ENTRYPOINT ["errotel", "-config", "/etc/errotel/config.yaml"]

@@ -25,8 +25,17 @@ services:
     build:
       context: .
       dockerfile: services/errotel/Dockerfile
-    ports: ["127.0.0.1:18080:8080"]
+    ports: ["127.0.0.1:18080:8080", "127.0.0.1:18081:8081"]
+    stop_grace_period: 40s
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8081/healthz/readiness"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
     environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://collector:4318
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment.name=local-synthetic
       APP_DEBUG_API_TOKEN: "${APP_DEBUG_API_TOKEN:-local-synthetic-only}"
     volumes: ["./deploy/local.yaml:/etc/errotel/config.yaml:ro"]
     depends_on: [victorialogs, victoriatraces, victoriametrics]

@@ -8,13 +8,13 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
 	"github.com/gopherex/xlog"
 
 	"github.com/gopherex/errotel/services/errotel/internal/envelope"
 	"github.com/gopherex/errotel/services/errotel/internal/oas"
+	"github.com/gopherex/errotel/services/errotel/internal/telemetry"
 )
 
 type App struct {
@@ -28,6 +28,8 @@ type App struct {
 	auth                       *authGate
 	slots                      chan struct{}
 	logger                     *xlog.Logger
+	observer                   *telemetry.Observer
+	stopObserving              func()
 }
 
 func New(cfg *Config, logger *xlog.Logger) (*App, error) {
@@ -76,9 +78,26 @@ func New(cfg *Config, logger *xlog.Logger) (*App, error) {
 		return nil, err
 	}
 
+	application.observer, err = telemetry.NewObserver()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := application.observeCacheSize(); err != nil {
+		return nil, err
+	}
+
 	return application, nil
 }
-func (a *App) Close() { a.http.CloseIdleConnections() }
+
+func (a *App) Close() {
+	if a.stopObserving != nil {
+		a.stopObserving()
+	}
+
+	a.http.CloseIdleConnections()
+}
+
 func writeJSON(writer http.ResponseWriter, status int, value any) {
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(status)
@@ -98,7 +117,6 @@ func (a *App) Handler() http.Handler {
 		return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 			writer.Header().Set("X-Content-Type-Options", "nosniff")
 			writer.Header().Set("Referrer-Policy", "no-referrer")
-			writer.Header().Set("X-Request-Id", uuid.NewString())
 
 			defer func() {
 				if recover() != nil {
@@ -128,5 +146,5 @@ func (a *App) Handler() http.Handler {
 	request.Get("/agent.md", a.agentGuide)
 	request.Get("/*", a.staticHandler)
 
-	return request
+	return a.observeHTTP(request)
 }

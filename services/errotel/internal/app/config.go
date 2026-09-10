@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/gopherex/xconf/pkg/structconf"
+
+	"github.com/gopherex/errotel/services/errotel/internal/telemetry"
 )
 
 type Endpoint struct {
@@ -20,6 +22,7 @@ type Endpoint struct {
 	HeadersEnv string `mapstructure:"headers_env"`
 }
 type Config struct {
+	Service          telemetry.Config  `mapstructure:"service"`
 	UIConnectOrigins []string          `mapstructure:"ui_connect_origins"`
 	Listen           string            `default:"127.0.0.1:8080"          mapstructure:"listen"`
 	UIDir            string            `default:"../../app/dist"          mapstructure:"ui_dir"`

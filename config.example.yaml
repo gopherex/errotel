@@ -1,3 +1,14 @@
+service:
+  http:
+    probe_addr: 127.0.0.1:8081
+    probe_timeout: 2s
+    metrics_enabled: true
+    read_timeout: 15s
+    write_timeout: 30s
+    shutdown_timeout: 15s
+  logger:
+    level: info
+    format: json
 listen: 127.0.0.1:8080
 ui_dir: ../../app/dist
 token_env: APP_DEBUG_API_TOKEN

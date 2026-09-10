@@ -1,4 +1,10 @@
 GO_DIR := services/errotel
+PLAYWRIGHT_INSTALL_FLAGS ?=
+VERSION ?= $(shell node -p "require('./packages/sdk/package.json').version")
+COMMIT ?= $(shell git rev-parse HEAD)
+BUILD_TIME ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+BUILD_PKG := github.com/gopherex/errotel/services/errotel/internal/build
+LDFLAGS := -s -w -X $(BUILD_PKG).Version=$(VERSION) -X $(BUILD_PKG).Commit=$(COMMIT) -X $(BUILD_PKG).BuildTime=$(BUILD_TIME)
 GOLANGCI_VERSION := v2.11.3
 GOLANGCI := $(CURDIR)/bin/golangci-lint
 
@@ -37,11 +43,11 @@ generate-go:
 
 build:
 	yarn build
-	cd $(GO_DIR) && go build -o ../../bin/errotel ./cmd/errotel
+	cd $(GO_DIR) && go build -trimpath -ldflags "$(LDFLAGS)" -o ../../bin/errotel ./cmd/errotel
 
 .PHONY: build-server test-integration stack-up stack-down seed
 build-server:
-	cd $(GO_DIR) && go build -trimpath -o ../../bin/errotel ./cmd/errotel
+	cd $(GO_DIR) && go build -trimpath -ldflags "$(LDFLAGS)" -o ../../bin/errotel ./cmd/errotel
 
 test-integration:
 	cd $(GO_DIR) && go test -race -tags=integration -count=1 ./tests/integration
@@ -62,8 +68,11 @@ ci: check-generated
 	$(MAKE) test-release test-packages
 
 ci-vm:
+	docker compose up -d victorialogs victoriatraces victoriametrics collector
+	$(MAKE) build-server
+	node scripts/test-service.mjs
 	$(MAKE) test-integration
-	yarn playwright install --with-deps chromium
+	yarn playwright install $(PLAYWRIGHT_INSTALL_FLAGS) chromium
 	node scripts/test-dev.mjs
 	yarn test:browser
 
@@ -88,3 +97,7 @@ release-artifacts:
 	yarn build
 	node scripts/pack.mjs
 	VERSION=$(VERSION) node scripts/release-artifacts.mjs
+
+.PHONY: test-service
+test-service: build-server
+	node scripts/test-service.mjs

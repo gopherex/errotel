@@ -35,7 +35,7 @@ async function start(traces = 'http://127.0.0.1:20428/select/jaeger') {
   const config = join(directory, 'config.yaml')
   await writeFile(
     config,
-    `listen: 127.0.0.1:18581\nsource: browser-synthetic\nui_connect_origins: [http://127.0.0.1:14318]\nui_dir: ${join(root, 'app/dist')}\nlogs:\n  base_url: http://127.0.0.1:19428\ntraces:\n  base_url: ${traces}\ncache:\n  max_entry_bytes: 1024\n  search_ttl: 100ms\n`
+    `service:\n  http:\n    probe_addr: ""\nlisten: 127.0.0.1:18581\nsource: browser-synthetic\nui_connect_origins: [http://127.0.0.1:14318]\nui_dir: ${join(root, 'app/dist')}\nlogs:\n  base_url: http://127.0.0.1:19428\ntraces:\n  base_url: ${traces}\ncache:\n  max_entry_bytes: 1024\n  search_ttl: 100ms\n`
   )
   processHandle = spawn(join(root, 'bin/errotel'), ['-config', config], {
     cwd: root,

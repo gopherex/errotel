@@ -58,12 +58,12 @@ func (c *memoryCache) get(key string) ([]byte, time.Time, bool) {
 	return value.body, value.fetched, true
 }
 
-func (c *memoryCache) put(key string, data []byte, ttl time.Duration, fetched time.Time) {
+func (c *memoryCache) put(key string, data []byte, ttl time.Duration, fetched time.Time) bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	if len(data) > c.maxEntry || len(data)+len(key) > c.max || ttl <= 0 {
-		return
+		return false
 	}
 
 	if old := c.entries[key]; old != nil {
@@ -76,4 +76,6 @@ func (c *memoryCache) put(key string, data []byte, ttl time.Duration, fetched ti
 
 	c.entries[key] = c.lru.PushFront(cacheEntry{key, append([]byte(nil), data...), fetched, fetched.Add(ttl)})
 	c.bytes += len(data) + len(key)
+
+	return true
 }

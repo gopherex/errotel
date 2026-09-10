@@ -11,6 +11,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 type upstreamError struct {
@@ -56,6 +59,32 @@ func readNDJSON(reader io.Reader, limit int) ([]row, error) {
 }
 
 func (a *App) logs(ctx context.Context, query string, record Range, limit int) ([]row, bool, error) {
+	if a.observer == nil {
+		return a.readLogs(ctx, query, record, limit)
+	}
+
+	ctx, finish := a.observer.Upstream(ctx, "victorialogs.query")
+	rows, partial, err := a.readLogs(ctx, query, record, limit)
+	outcome := "complete"
+
+	if err != nil {
+		outcome = "failed"
+
+		var failure *upstreamError
+
+		if errors.As(err, &failure) {
+			outcome = failure.code
+		}
+	} else if partial {
+		outcome = "partial"
+	}
+
+	finish(outcome)
+
+	return rows, partial, err
+}
+
+func (a *App) readLogs(ctx context.Context, query string, record Range, limit int) ([]row, bool, error) {
 	start, _ := parseNano(record.Start)
 	end, _ := parseNano(record.End)
 	// Keep the absolute range explicit in the structured LogsQL query.
@@ -82,6 +111,7 @@ func (a *App) logs(ctx context.Context, query string, record Range, limit int) (
 
 	req.Header = a.logsHeaders.Clone()
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(req.Header))
 
 	resp, err := a.http.Do(req)
 	if err != nil {

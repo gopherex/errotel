@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 func (a *App) loadTrace(ctx context.Context, traceID string) (RelatedResult, error) {
@@ -19,7 +22,15 @@ func (a *App) loadTrace(ctx context.Context, traceID string) (RelatedResult, err
 	ctx, cancel := context.WithTimeout(ctx, a.cfg.Queries.Timeout)
 	defer cancel()
 
-	return a.requestTrace(ctx, traceID), nil
+	if a.observer == nil {
+		return a.requestTrace(ctx, traceID), nil
+	}
+
+	ctx, finish := a.observer.Upstream(ctx, "victoriatraces.trace")
+	result := a.requestTrace(ctx, traceID)
+	finish(result.Status)
+
+	return result, nil
 }
 
 func (a *App) requestTrace(ctx context.Context, traceID string) RelatedResult {
@@ -34,6 +45,7 @@ func (a *App) requestTrace(ctx context.Context, traceID string) RelatedResult {
 	}
 
 	request.Header = a.tracesHeaders.Clone()
+	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(request.Header))
 	// #nosec G704 -- Fixed configured upstream and validated ID; redirects are disabled.
 	response, err := a.http.Do(request)
 	if err != nil {

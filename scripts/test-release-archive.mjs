@@ -19,12 +19,23 @@ try {
     '-C',
     stage,
   ])
+  const metadata = JSON.parse(
+    execFileSync(join(stage, 'errotel'), ['-version'], { encoding: 'utf8' })
+  )
+  assert.equal(metadata.version, version)
+  assert.equal(metadata.commit, JSON.parse(readFileSync(join(stage, 'version.json'))).commit)
+  assert.ok(Number.isFinite(Date.parse(metadata.buildTime)))
   const portProbe = createServer().listen(0, '127.0.0.1')
   await once(portProbe, 'listening')
   const port = portProbe.address().port
   await new Promise((done) => portProbe.close(done))
   const config = join(stage, 'config.yaml')
-  writeFileSync(config, readFileSync(config, 'utf8').replace('127.0.0.1:8080', `127.0.0.1:${port}`))
+  writeFileSync(
+    config,
+    readFileSync(config, 'utf8')
+      .replace('127.0.0.1:8080', `127.0.0.1:${port}`)
+      .replace('probe_addr: 127.0.0.1:8081', 'probe_addr: ""')
+  )
   server = spawn(join(stage, 'errotel'), ['-config', config], {
     cwd: stage,
     stdio: 'ignore',
@@ -34,7 +45,7 @@ try {
   for (let attempt = 0; attempt < 100; attempt++) {
     if (server.exitCode !== null) throw new Error('Packaged server exited before readiness')
     try {
-      ready = (await fetch(`http://127.0.0.1:${port}/healthz/readiness`)).ok
+      ready = (await fetch(`http://127.0.0.1:${port}/healthz/liveness`)).ok
       if (ready) break
     } catch {
       /* process startup */

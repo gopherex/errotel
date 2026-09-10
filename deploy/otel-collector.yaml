@@ -15,6 +15,10 @@ exporters:
     endpoint: http://victoriatraces:10428/insert/opentelemetry
     sending_queue:
       enabled: false
+  otlp_http/metrics:
+    metrics_endpoint: http://victoriametrics:8428/opentelemetry/v1/metrics
+    sending_queue:
+      enabled: false
 service:
   pipelines:
     logs:
@@ -23,3 +27,6 @@ service:
     traces:
       receivers: [otlp]
       exporters: [otlp_http/traces]
+    metrics:
+      receivers: [otlp]
+      exporters: [otlp_http/metrics]

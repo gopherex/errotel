@@ -15,6 +15,9 @@ import { checkVersion } from './release-version.mjs'
 
 const version = checkVersion(process.env.VERSION)
 const commit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
+const buildTime = new Date().toISOString()
+const buildPackage = 'github.com/gopherex/errotel/services/errotel/internal/build'
+const ldflags = `-s -w -X ${buildPackage}.Version=${version} -X ${buildPackage}.Commit=${commit} -X ${buildPackage}.BuildTime=${buildTime}`
 const output = resolve('dist/release')
 mkdirSync(output, { recursive: true })
 const targets = (
@@ -28,7 +31,7 @@ for (const target of targets) {
   try {
     execFileSync(
       'go',
-      ['build', '-trimpath', '-ldflags=-s -w', '-o', join(stage, 'errotel'), './cmd/errotel'],
+      ['build', '-trimpath', `-ldflags=${ldflags}`, '-o', join(stage, 'errotel'), './cmd/errotel'],
       {
         cwd: 'services/errotel',
         stdio: 'inherit',
@@ -40,13 +43,17 @@ for (const target of targets) {
     cpSync('app/public/third-party-notices.txt', join(stage, 'THIRD_PARTY_NOTICES.md'))
     cpSync('openapi/openapi.json', join(stage, 'openapi.json'))
     cpSync('docs/agent.md', join(stage, 'agent.md'))
+    mkdirSync(join(stage, 'docs'))
+    for (const guide of ['sdk.md', 'ui.md', 'http-api.md', 'development.md', 'query-language.md']) {
+      cpSync(join('docs', guide), join(stage, 'docs', guide))
+    }
     writeFileSync(
       join(stage, 'config.yaml'),
       readFileSync('config.example.yaml', 'utf8').replace('ui_dir: ../../app/dist', 'ui_dir: ./ui')
     )
     writeFileSync(
       join(stage, 'version.json'),
-      `${JSON.stringify({ version, commit, target }, null, 2)}\n`
+      `${JSON.stringify({ version, commit, buildTime, target }, null, 2)}\n`
     )
     execFileSync('tar', [
       '-czf',

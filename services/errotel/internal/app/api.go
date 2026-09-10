@@ -27,12 +27,18 @@ type (
 func (a *App) cached(ctx context.Context, key string, ttl time.Duration, load responseLoader) (cachedResponse, error) {
 	key = a.revision + ":" + key
 	if body, fetched, exists := a.cache.get(key); exists {
+		a.observeCache(ctx, "hit")
+
 		return cachedResponse{body, fetched, true}, nil
 	}
+
+	a.observeCache(ctx, "miss")
 	select {
 	case a.slots <- struct{}{}:
 		defer func() { <-a.slots }()
 	default:
+		a.observeCache(ctx, "budget_rejected")
+
 		return cachedResponse{}, &upstreamError{"query_budget_exceeded", http.StatusTooManyRequests}
 	}
 
@@ -56,7 +62,9 @@ func (a *App) cached(ctx context.Context, key string, ttl time.Duration, load re
 			ttl = a.cfg.Cache.NegativeTTL
 		}
 
-		a.cache.put(key, body, ttl, fetched)
+		if !a.cache.put(key, body, ttl, fetched) {
+			a.observeCache(ctx, "bypass")
+		}
 	}
 
 	return cachedResponse{body, fetched, false}, nil
