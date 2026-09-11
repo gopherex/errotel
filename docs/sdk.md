@@ -28,8 +28,8 @@ client.dispose()
 ```
 
 Sources may register/unregister at any time. Duplicate names throw; re-registering
-gets a new registration ID. Reads are synchronous, only on `recordState` or a
-capture that includes registered state. Registration creates no subscription or
+gets a new registration ID. Reads are synchronous, only on `recordState`, or a
+capture/local snapshot that includes registered state. Registration creates no subscription or
 polling. A non-JSON source supplies `serialize(value)` explicitly. For arbitrary
 inline input use `serializeState`; otherwise `state` must already be JSON.
 
@@ -55,6 +55,82 @@ standard OTLP protobuf LogRecord; correlation uses the native trace/span fields.
 There is no artificial span, state in Resource/Baggage, or global OTel reset.
 Explicit valid context takes priority over active context; absent context stays
 unlinked. Unsampled context does not suppress capture.
+
+## Local snapshot
+
+`client.snapshot()` reads the diagnostic picture already retained by the client
+for user bug reports or another application-owned workflow. Deliver it through
+your application's RPC. It does **not** emit an OTel LogRecord, write to the
+outbox, call `filter`, consume rate-limit tokens, or record itself in history.
+`kind: 'snapshot'` is client-local only: it is **not accepted by the ErrOtel read
+server** and is not part of the exception wire envelope/schema.
+
+```ts
+import type { SnapshotOptions, SnapshotResult } from '@gopherex/errotel-sdk'
+import type { DebugSnapshotV1 } from '@gopherex/errotel-sdk/protocol'
+
+const result = client.snapshot({
+  includeRegisteredState: true, // default
+  includeHistory: true,         // default
+  maxHistoryEntries: 50,        // optional: keep newest retained entries
+  maxBytes: 64 * 1024,          // default: UTF-8 bytes of JSON.stringify(value)
+  context: explicitOtelContext, // optional, otherwise active context
+})
+if (result.status === 'ok') {
+  await applicationRpc.submitBugReport({ description, diagnostics: result.value })
+}
+```
+
+The core method signature is `snapshot(opts?: SnapshotOptions): SnapshotResult`.
+It is also available on `createOtlpClient` without changing provider ownership.
+`SnapshotResult` is `{ status: 'ok'; value: DebugSnapshotV1 }` or
+`{ status: 'unavailable'; reason: 'closed' | 'reentrant' }`.
+
+Sources use the **same** read → optional serialize → sanitize → strict JSON copy
+path and reader-error handling as capture. History uses the same monotonic age and
+capacity retention and is copied before any source callback. It includes state
+records and all breadcrumbs, including application logs named `log.<namespace>`;
+the SDK does not collect those logs a second time. Without snapshot-specific
+trimming, sources and history match a capture at the same time. Retained entries
+keep their original timestamps and correlation and are not sanitized a second time.
+The result is detached plain JSON: mutating it cannot change SDK history or future
+captures. Both `JSON.stringify` and `structuredClone` are supported.
+
+`snapshotId` identifies this local read. `runtime.sequence` is the current event
+sequence at the start of the read; snapshots do not advance it. Trace correlation
+uses the same explicit → active → absent policy as capture, including unsampled
+contexts. With disabled history the result remains `ok`, with `enabled: false` and
+empty items. `includeHistory: false` omits items without changing configured
+`enabled` or counting them as truncations. `includeRegisteredState: false` skips
+source callbacks. No inline state or exception is invented.
+
+Normal retention runs first. Then `maxHistoryEntries` drops oldest entries; the
+byte budget drops more oldest entries before replacing the largest source values
+with `status: 'error', error: { code: 'budget_exceeded', stage: 'serialize' }`.
+Source names, registration IDs and timestamps are preserved. Trimming changes only
+the returned DTO. `history.truncatedCount` counts history items omitted by this
+read's limits; `evictedCount` still counts normal retention evictions. A byte-budget
+overflow adds `snapshot_budget` to the returned diagnostics. Bytes include all
+metadata, Unicode encoding, error markers and diagnostics.
+
+Limits accept nonnegative safe integers (including zero). Invalid numeric options
+fall back to their defaults and report `snapshot_options`. If even required
+metadata/error markers exceed `maxBytes` (for example, zero bytes or very long
+source names), the SDK returns the valid reduced DTO with `snapshot_budget` even
+though it exceeds the budget; it never throws just because the budget is too small.
+Consumers with a strict RPC limit must check the final encoded size. The method is
+synchronous: the output budget does not bound source callback work or peak copying
+memory, and cannot interrupt application code.
+
+Calls after disposal return `closed`; calls inside capture, source readers,
+serializers, sanitizers, filters or diagnostic callbacks return `reentrant`.
+Successful reads increment only the new `stats().snapshots` counter, leaving
+capture counters/timings untouched. Unavailable calls do not increment it. Normal
+retention can update history entry/eviction counts. Snapshot reader/budget errors
+are local diagnostics only: they do not invoke `onDiagnostic` or change its
+capture diagnostic counters. Application callbacks are still application code;
+explicit mutations made by a reader retain their usual effect and fall after the
+fixed history boundary.
 
 ### Owned provider convenience entrypoint
 
@@ -290,7 +366,7 @@ unsampled contexts are still recorded. See [OTel JavaScript context](https://ope
 
 ## Diagnostics, retries and verification
 
-`client.stats()` is a detached synchronous snapshot: attempted/emitted/filtered,
+`client.stats()` is a detached synchronous snapshot: local `snapshots`, attempted/emitted/filtered,
 rateLimited/failed/reentrant, current history entries/evictions, last/max capture
 milliseconds, and counters by diagnostic code. These are client-lifetime counters;
 clearHistory resets only history and its eviction count. Timing includes policy and

@@ -20,6 +20,36 @@ try {
     cwd: sandbox,
     stdio: 'inherit',
   })
+  writeFileSync(
+    join(sandbox, 'consumer.ts'),
+    `import { createClient, type SnapshotOptions, type SnapshotResult } from '@gopherex/errotel-sdk';
+import type { DebugSnapshotV1 } from '@gopherex/errotel-sdk/protocol';
+const client = createClient({loggerProvider:{getLogger:()=>({emit(){},enabled(){return true}})}});
+const read: (opts?: SnapshotOptions) => SnapshotResult = client.snapshot;
+const result = read({maxBytes:65536,maxHistoryEntries:10});
+if (result.status === 'ok') {
+  const value: DebugSnapshotV1 = result.value;
+  const kind: 'snapshot' = value.kind;
+  const count: number = value.history.truncatedCount;
+}
+const snapshots: number = client.stats().snapshots;
+`
+  )
+  execFileSync(
+    process.execPath,
+    [
+      resolve('node_modules/typescript/bin/tsc'),
+      '--noEmit',
+      '--strict',
+      '--skipLibCheck',
+      '--module',
+      'NodeNext',
+      '--target',
+      'ES2022',
+      'consumer.ts',
+    ],
+    { cwd: sandbox, stdio: 'inherit' }
+  )
   execFileSync(
     process.execPath,
     [
@@ -37,12 +67,23 @@ try {
     assert.equal(typeof createReactErrorHandler, 'function');
     assert.equal(typeof sdk.redactKeys, 'function');
     assert.equal(typeof sdk.SDK_VERSION, 'string');
+    const local = sdk.createClient({loggerProvider:{getLogger:()=>({emit(){throw Error('unexpected emit')}})}});
+    local.registerState('consumer',{read:()=>({ready:true})});
+    local.addBreadcrumb('log.consumer',{message:'local only'});
+    const snapshot = local.snapshot();
+    assert.equal(snapshot.status,'ok');
+    assert.equal(snapshot.value.kind,'snapshot');
+    assert.equal(snapshot.value.state.sources[0].value.ready,true);
+    assert.equal(local.stats().attempted,0);
+    assert.equal(local.stats().snapshots,1);
+    assert.deepEqual(structuredClone(snapshot),snapshot);
+    local.dispose();
     const client = createClient({baseUrl:'http://example.invalid', fetch:async () =>
       new Response(JSON.stringify({source:'isolated-consumer'}),{headers:{'Content-Type':'application/json'}})});
     const result = await getCapabilities({client,throwOnError:true});
     assert.equal(result.data.source,'isolated-consumer');
     assert.equal(typeof investigate,'function');
-    console.log('Published tarball imports and generated client request: OK');
+    console.log('Published tarball types, local snapshot, imports and generated client request: OK');
   `,
     ],
     { cwd: sandbox, stdio: 'inherit' }

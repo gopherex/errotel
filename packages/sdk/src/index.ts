@@ -1,6 +1,7 @@
 import { context, trace, isSpanContextValid, ROOT_CONTEXT, type Context } from '@opentelemetry/api'
 import { SeverityNumber, type LoggerProvider, type LogAttributes } from '@opentelemetry/api-logs'
 import { materialize } from './json.js'
+import { budgetSnapshot } from './snapshot.js'
 import { SDK_VERSION } from './version.js'
 export { SDK_VERSION } from './version.js'
 import { exceptionReader, type ExceptionLimits } from './exception.js'
@@ -20,6 +21,7 @@ import type {
   CapturedValue,
   CaptureResult,
   DebugEnvelopeV1,
+  DebugSnapshotV1,
   ExceptionData,
   HistoryEntry,
   JsonStateSource,
@@ -54,6 +56,18 @@ export interface CaptureOptions {
   severityNumber?: SeverityNumber
   severityText?: string
 }
+export interface SnapshotOptions {
+  includeRegisteredState?: boolean
+  includeHistory?: boolean
+  /** Keep the newest N items after normal age/capacity retention. */
+  maxHistoryEntries?: number
+  /** UTF-8 JSON budget, default 64 KiB. Required metadata may exceed a tiny budget. */
+  maxBytes?: number
+  context?: Context
+}
+export type SnapshotResult =
+  | { status: 'ok'; value: DebugSnapshotV1 }
+  | { status: 'unavailable'; reason: 'closed' | 'reentrant' }
 export type HistoryResult =
   | { status: 'recorded'; id: string }
   | { status: 'not_recorded'; reason: string }
@@ -89,6 +103,7 @@ export function createClient(options: ClientOptions) {
   const exceptionData = exceptionReader(options.exceptionLimits)
   const allowCapture = tokenBucket(options.rateLimit)
   const counts = {
+    snapshots: 0,
     attempted: 0,
     emitted: 0,
     filtered: 0,
@@ -100,6 +115,7 @@ export function createClient(options: ClientOptions) {
   }
   const diagnosticCounts: Record<string, number> = Object.create(null)
   let captureDiagnostics: CaptureDiagnostic[] | undefined
+  let snapshotDiagnostics: CaptureDiagnostic[] | undefined
   let policyRunning = false
   const enabled = options.history?.enabled ?? true
   const maxEntries = options.history?.maxEntries ?? 100
@@ -129,6 +145,15 @@ export function createClient(options: ClientOptions) {
     stage: CaptureDiagnostic['stage'] = 'capture'
   ): CaptureDiagnostic {
     const d = { code, stage }
+    // Local reads report their errors in the result, without capture counters or callbacks.
+    if (snapshotDiagnostics) {
+      if (
+        !snapshotDiagnostics.some((item) => item.code === code) &&
+        snapshotDiagnostics.length < 64
+      )
+        snapshotDiagnostics.push(d)
+      return d
+    }
     diagnosticCounts[code] = (diagnosticCounts[code] ?? 0) + 1
     if (
       captureDiagnostics &&
@@ -334,6 +359,54 @@ export function createClient(options: ClientOptions) {
     prune(mono())
     return { status: 'recorded', id: item.id }
   }
+  function localSnapshot(opts: SnapshotOptions = {}): SnapshotResult {
+    if (closed) return { status: 'unavailable', reason: 'closed' }
+    if (capturing || diagnosing || policyRunning || reading.size > 0)
+      return { status: 'unavailable', reason: 'reentrant' }
+    capturing = true
+    snapshotDiagnostics = []
+    try {
+      const timestampUnixNano = nano(),
+        monotonicMs = mono(),
+        runtime = { id: runtimeId, sequence }
+      const link = correlation(opts.context)
+      prune(monotonicMs)
+      const retained = {
+        enabled,
+        sinceUnixNano: since,
+        evictedCount: evicted,
+        truncatedCount: 0,
+        items: opts.includeHistory === false ? [] : [...history],
+      }
+      const registrations = [...sources]
+      const value = budgetSnapshot(
+        {
+          schema: 'app-debug',
+          schemaVersion: 1,
+          kind: 'snapshot',
+          snapshotId: id(),
+          timestampUnixNano,
+          monotonicMs,
+          runtime,
+          ...(link.trace ? { trace: link.trace } : {}),
+          state: {
+            sources:
+              opts.includeRegisteredState === false
+                ? []
+                : registrations.map(([name, registration]) => snapshot(name, registration)),
+          },
+          history: retained,
+          diagnostics: snapshotDiagnostics,
+        },
+        opts
+      )
+      counts.snapshots++
+      return { status: 'ok', value }
+    } finally {
+      snapshotDiagnostics = undefined
+      capturing = false
+    }
+  }
   function capture(
     value: unknown,
     opts: CaptureOptions = {},
@@ -535,6 +608,7 @@ export function createClient(options: ClientOptions) {
       }
     },
     registerState,
+    snapshot: localSnapshot,
     captureException: (value: unknown, opts?: CaptureOptions) => capture(value, opts),
     addBreadcrumb: (name: string, data?: JsonValue, opts?: { context?: Context }) =>
       add('breadcrumb', name, data, opts?.context),

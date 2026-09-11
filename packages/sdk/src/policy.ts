@@ -20,6 +20,8 @@ export interface RateLimit {
   perSecond: number
 }
 export interface ClientStats {
+  /** Successful local reads; unavailable calls do not increment this counter. */
+  snapshots: number
   attempted: number
   emitted: number
   filtered: number

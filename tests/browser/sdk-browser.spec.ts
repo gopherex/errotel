@@ -5,6 +5,86 @@ import { expect, test } from '@playwright/test'
 const root = resolve(import.meta.dirname, '../..')
 const sdk = `/@fs/${root}/packages/sdk/src`
 
+test('local snapshot is detached and matches capture with native browser clocks frozen', async ({
+  page,
+}) => {
+  await page.goto('http://127.0.0.1:14173')
+  const result = await page.evaluate(async (base) => {
+    const { createClient, redactKeys } = await import(`${base}/index.ts`)
+    const records: { body: string }[] = []
+    const client = createClient({
+      loggerProvider: { getLogger: () => ({ emit: (r: { body: string }) => records.push(r) }) },
+      sanitize: redactKeys(['password']),
+    })
+    const originalDate = Date.now
+    Object.defineProperty(performance, 'now', { value: () => 100, configurable: true })
+    Date.now = () => 1_750_000_000_000
+    try {
+      client.registerState('editor', { read: () => ({ password: 'SECRET_BROWSER', count: 1 }) })
+      client.recordState('editor')
+      client.addBreadcrumb('log.editor', { password: 'SECRET_LOG', message: 'saved' })
+      const local = client.snapshot()
+      const clone = structuredClone(local)
+      const beforeEmit = records.length
+      client.captureException('compare')
+      const envelope = JSON.parse(records[0].body)
+      Object.assign(local.value.history.items[0], { snapshot: {} })
+      const later = client.snapshot()
+      return { clone, beforeEmit, envelope, later, stats: client.stats() }
+    } finally {
+      Date.now = originalDate
+      Reflect.deleteProperty(performance, 'now')
+      client.dispose()
+    }
+  }, sdk)
+  expect(result.beforeEmit).toBe(0)
+  expect(result.clone.status).toBe('ok')
+  expect(result.clone.value.state.sources).toEqual(result.envelope.state.sources)
+  expect(result.clone.value.history.items).toEqual(result.envelope.history.items)
+  expect(result.later.value.history.items).toEqual(result.envelope.history.items)
+  expect(JSON.stringify(result.clone)).not.toContain('SECRET_')
+  expect(result.stats).toMatchObject({ snapshots: 2, attempted: 1, emitted: 1 })
+})
+
+test('local snapshot leaves native IndexedDB outbox and transport untouched', async ({ page }) => {
+  await page.goto('http://127.0.0.1:14173')
+  let requests = 0
+  await page.route('**/snapshot-only/v1/logs', (route) => {
+    requests++
+    return route.fulfill({ status: 200 })
+  })
+  const result = await page.evaluate(async (base) => {
+    const { createOtlpClient } = await import(`${base}/otlp.ts`)
+    let filters = 0
+    const client = createOtlpClient({
+      url: `${location.origin}/snapshot-only/v1/logs`,
+      outbox: { name: `snapshot-${crypto.randomUUID()}` },
+      filter: () => {
+        filters++
+        return false
+      },
+      rateLimit: { burst: 1, perSecond: 0.001 },
+    })
+    client.registerState('editor', { read: () => ({ ready: true }) })
+    client.addBreadcrumb('log.app', { message: 'user reporting a bug' })
+    await client.outbox.flushStorage()
+    const before = await client.outbox.stats()
+    const beforeClient = client.stats()
+    const values = [client.snapshot(), client.snapshot({ maxBytes: 1 })]
+    await client.outbox.flushStorage()
+    await client.flush()
+    const after = await client.outbox.stats()
+    const afterClient = client.stats()
+    await client.shutdown()
+    return { before, after, beforeClient, afterClient, filters, values }
+  }, sdk)
+  expect(requests).toBe(0)
+  expect(result.filters).toBe(0)
+  expect(result.after).toEqual(result.before)
+  expect(result.afterClient).toEqual({ ...result.beforeClient, snapshots: 2 })
+  expect(result.values.every((r: { status: string }) => r.status === 'ok')).toBe(true)
+})
+
 test('native fetch/XHR/navigation: safe metadata, exclusions, failures, ownership and disposal', async ({
   page,
 }) => {

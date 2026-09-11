@@ -80,6 +80,28 @@ export interface ExceptionData extends ExceptionInfo {
   };
 }
 
+/** Client-local diagnostic picture. Not an OTLP envelope or read-server payload. */
+export interface DebugSnapshotV1 {
+  readonly schema: 'app-debug';
+  readonly schemaVersion: 1;
+  readonly kind: 'snapshot';
+  readonly snapshotId: Id;
+  readonly timestampUnixNano: UnixNano;
+  readonly monotonicMs: number;
+  readonly runtime: { readonly id: Id; readonly sequence: number };
+  readonly trace?: TraceRef;
+  readonly state: { readonly sources: readonly SourceSnapshot[] };
+  readonly history: {
+    readonly enabled: boolean;
+    readonly sinceUnixNano: UnixNano;
+    readonly evictedCount: number;
+    /** Items dropped by this snapshot's limits, not normal retention. */
+    readonly truncatedCount: number;
+    readonly items: readonly HistoryEntry[];
+  };
+  readonly diagnostics?: readonly CaptureDiagnostic[];
+}
+
 export interface DebugEnvelopeV1 {
   readonly schema: 'app-debug';
   readonly schemaVersion: 1;

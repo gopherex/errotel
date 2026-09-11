@@ -13,6 +13,11 @@ import { createOtlpClient } from '@gopherex/errotel-sdk/otlp'
 The core entry uses an existing LoggerProvider; `/otlp` offers an owned provider
 and OTLP/HTTP protobuf exporter. `/protocol` is a type-only entry point.
 The SDK sends to your OTLP pipeline, independently of the ErrOtel read server.
+`client.snapshot()` returns detached local state/history for application-owned bug
+reports without emission, outbox writes or capture budget consumption. It defaults
+to a 64 KiB JSON budget and reports omissions in the result; required metadata may
+exceed very small budgets. `DebugSnapshotV1` is exported from `/protocol` and is
+client-local, not an exception payload accepted by the read server.
 See the project README for initialization, state sources, lifecycle, optional
 IndexedDB persistence, CORS/CSP and delivery limitations.
 
