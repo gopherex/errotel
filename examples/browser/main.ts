@@ -3,6 +3,7 @@ import { BasicTracerProvider, SimpleSpanProcessor } from '@opentelemetry/sdk-tra
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto'
 import { resourceFromAttributes } from '@opentelemetry/resources'
 import type { LogRecord } from '@opentelemetry/api-logs'
+import { SDK_VERSION, redactKeys } from '../../packages/sdk/src/index'
 import { createOtlpClient } from '../../packages/sdk/src/otlp'
 import type { DebugEnvelopeV1 } from '../../packages/sdk/src/protocol'
 
@@ -46,10 +47,11 @@ export async function runScenario(options: ScenarioOptions = {}): Promise<Scenar
     url: options.logsUrl ?? input('logs'),
     resource,
     batch: { scheduledDelayMillis: 60_000 },
+    sanitize: redactKeys(['password']),
   })
   // Observe the actual record from this owned provider without changing its body.
   // The export processor remains the real HTTP/protobuf implementation.
-  const logger = client.provider.getLogger('app-debug.browser', '0.1.0')
+  const logger = client.provider.getLogger('app-debug.browser', SDK_VERSION)
   const emit = logger.emit.bind(logger)
   logger.emit = (record) => {
     records.push(record as LogRecord)
@@ -72,13 +74,16 @@ export async function runScenario(options: ScenarioOptions = {}): Promise<Scenar
   client.addBreadcrumb('command.started', { command: 'applyPatch' }, { context })
   client.recordState('editor', { context })
   state.revision = 2
-  const error = new Error('Synthetic patch failed <img src=x onerror=alert(1)>')
+  const error = new Error('Synthetic patch failed <img src=x onerror=alert(1)>', {
+    cause: new Error('Synthetic underlying failure'),
+  })
   error.name = 'SyntheticError'
   const result = client.captureException(error, {
     context,
     state: {
       command: 'applyPatch',
       patchId: 'synthetic-7',
+      password: 'SYNTHETIC_SECRET_NEVER_EXPORT',
       payload: 'x'.repeat(options.largeBytes ?? 0),
     },
     groupKey: 'synthetic-patch',

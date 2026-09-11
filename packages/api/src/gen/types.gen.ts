@@ -33,6 +33,7 @@ export type DebugEnvelopeV1 = {
     extensions?: {
         [key: string]: WireJson;
     };
+    diagnostics?: Array<WireDiagnostic>;
     [key: string]: unknown | 'app-debug' | 1 | 'exception' | WireId | WireUnixNano | number | {
         id: WireId;
         sequence: WireSequence;
@@ -49,7 +50,7 @@ export type DebugEnvelopeV1 = {
         [key: string]: unknown | boolean | WireUnixNano | number | Array<WireHistoryEntry>;
     } | string | {
         [key: string]: WireJson;
-    } | undefined;
+    } | Array<WireDiagnostic> | undefined;
 };
 
 export type WireJson = null | boolean | number | string | Array<WireJson> | {
@@ -99,12 +100,15 @@ export type WireException = {
         column?: number;
         [key: string]: unknown | string | number | undefined;
     };
+    cause?: WireExceptionInfo;
+    errors?: Array<WireExceptionInfo>;
+    incomplete?: 'cycle' | 'limit' | 'unreadable';
     [key: string]: unknown | string | ('manual' | 'window.error' | 'unhandledrejection') | boolean | {
         url?: string;
         line?: number;
         column?: number;
         [key: string]: unknown | string | number | undefined;
-    } | undefined;
+    } | WireExceptionInfo | Array<WireExceptionInfo> | ('cycle' | 'limit' | 'unreadable') | undefined;
 };
 
 export type WireSnapshot = WireCapturedValue & {
@@ -134,6 +138,16 @@ export type WireHistoryEntry = {
     kind: 'state';
     snapshot: WireSnapshot;
     [key: string]: unknown | WireId | WireSequence | WireUnixNano | number | WireTrace | 'state' | WireSnapshot | undefined;
+};
+
+export type WireExceptionInfo = {
+    type?: string;
+    message?: string;
+    stacktrace?: string;
+    cause?: WireExceptionInfo;
+    errors?: Array<WireExceptionInfo>;
+    incomplete?: 'cycle' | 'limit' | 'unreadable';
+    [key: string]: unknown | string | WireExceptionInfo | Array<WireExceptionInfo> | ('cycle' | 'limit' | 'unreadable') | undefined;
 };
 
 /**

@@ -4,6 +4,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 
 const paths = [
   'packages/sdk/src/protocol.ts',
+  'packages/sdk/src/version.ts',
   'packages/api/src/gen',
   'openapi/openapi.json',
   'services/errotel/internal/oas',

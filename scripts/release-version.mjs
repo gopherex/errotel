@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -7,6 +7,7 @@ export const manifests = [
   'packages/api/package.json',
   'app/package.json',
 ]
+export const releaseFiles = [...manifests, 'packages/sdk/src/version.ts']
 export function versionOf(input) {
   if (!/^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(input ?? ''))
     throw new Error('Expected a stable version X.Y.Z or vX.Y.Z')
@@ -34,6 +35,12 @@ export function setVersion(input, root = '.') {
       if (pkg.dependencies?.[name]) pkg.dependencies[name] = version
     writeFileSync(path, `${JSON.stringify(pkg, null, 2)}\n`)
   }
+  const source = resolve(root, 'packages/sdk/src/version.ts')
+  if (existsSync(source))
+    writeFileSync(
+      source,
+      `// Generated from package.json by scripts/sdk-version.mjs.\nexport const SDK_VERSION = '${version}'\n`
+    )
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const [mode, input] = process.argv.slice(2)

@@ -139,6 +139,8 @@ test('real browser protobuf → VictoriaLogs → generated read API → same URL
   expect(before.payload.status).toBe('available')
   if (before.payload.status !== 'available') throw new Error('Invalid round-trip payload')
   expect(before.payload.value).toEqual(captured.envelope)
+  expect(before.payload.value.exception.cause?.message).toBe('Synthetic underlying failure')
+  expect(JSON.stringify(before)).not.toContain('SYNTHETIC_SECRET_NEVER_EXPORT')
   expect(before.exception.stacktrace).toBe(captured.envelope.exception.stacktrace)
   expect(before.warnings).toEqual([])
   expect((await api(`occurrences/${item.ref}`)).headers.get('x-errotel-cache')).toBe('miss')
@@ -177,6 +179,9 @@ test('real browser protobuf → VictoriaLogs → generated read API → same URL
     captured.envelope.exception.stacktrace ?? ''
   )
   await expect(page.getByRole('heading', { name: 'State at capture' })).toBeVisible()
+  await page.getByText('Exception causes', { exact: true }).click()
+  await page.getByText('cause', { exact: true }).click()
+  await expect(page.getByText('"Synthetic underlying failure"', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Inline state' }).click()
   await expect(page.getByText('"applyPatch"', { exact: true }).first()).toBeVisible()
   await expect(page.locator('img, script[src^="http://attacker"]')).toHaveCount(0)

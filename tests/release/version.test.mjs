@@ -4,7 +4,13 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } f
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import test from 'node:test'
-import { checkVersion, manifests, setVersion, versionOf } from '../../scripts/release-version.mjs'
+import {
+  checkVersion,
+  manifests,
+  releaseFiles,
+  setVersion,
+  versionOf,
+} from '../../scripts/release-version.mjs'
 
 test('release versions stay synchronized across packages and workspace consumers', () => {
   const root = mkdtempSync(join(tmpdir(), 'errotel-version-'))
@@ -16,7 +22,12 @@ test('release versions stay synchronized across packages and workspace consumers
         JSON.stringify({ version: '0.1.0', dependencies: { '@gopherex/errotel-sdk': '0.1.0' } })
       )
     }
+    const source = join(root, 'packages/sdk/src/version.ts')
+    mkdirSync(dirname(source), { recursive: true })
+    writeFileSync(source, "export const SDK_VERSION = '0.1.0'\n")
     setVersion('v0.2.3', root)
+    assert.match(readFileSync(source, 'utf8'), /SDK_VERSION = '0.2.3'/)
+    assert.ok(releaseFiles.includes('packages/sdk/src/version.ts'))
     assert.equal(checkVersion('0.2.3', root), '0.2.3')
     assert.throws(() => checkVersion('0.2.4', root), /expected/)
     for (const value of ['v01.2.3', '1.0.0-rc.1', '1.2', '1.2.3; touch bad', '', undefined])

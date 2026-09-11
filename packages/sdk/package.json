@@ -20,10 +20,14 @@
     },
     "./protocol": {
       "types": "./dist/protocol.d.ts"
+    },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "import": "./dist/browser.js"
     }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "node ../../scripts/sdk-version.mjs && tsc",
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {

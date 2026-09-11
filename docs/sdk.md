@@ -98,7 +98,7 @@ const client = createOtlpClient({
 })
 client.captureException(error, { state: diagnosticState })
 await client.outbox?.flushStorage() // IDB transactions; can reject if storage failed
-const pending = await client.outbox?.stats() // { entries, bytes }; may already be sent
+const pending = await client.outbox?.stats() // queue size/age and delivery counters; may already be sent
 await client.flush() // bounded export attempt; not a VM acknowledgement
 // On account/tenant change, stop this client, clear its queue, then use a new namespace.
 client.dispose()
@@ -107,8 +107,7 @@ await client.shutdown()
 ```
 
 This opt-in extension uses a logs processor on the **owned** provider, replacing
-`batch` (specifying both is an error). Core `createClient` and the wire v1 contract
-are unchanged. The processor starts an IndexedDB write immediately on emit and
+`batch` (specifying both is an error). Core `createClient` can still use a borrowed provider. The processor starts an IndexedDB write immediately on emit and
 requests strict transaction durability. A crash before that asynchronous commit can
 still lose the record. `CaptureResult` remains synchronous and does not report a
 storage acknowledgement. No service worker or background process is installed.
@@ -122,7 +121,7 @@ tenant changes, including when only authentication headers change. Diagnostics
 contain codes, not user state; avoid enabling OTel DEBUG logging with sensitive data.
 
 Opening a client with the same namespace and endpoint replays its queue. Retry
-checks run while the page exists, with exponential backoff up to one minute;
+checks run while the page exists, with exponential backoff and randomized delay up to one minute;
 online/hidden-page events trigger another attempt. A 30-second IDB lease prevents
 simultaneous tabs from normally sending the same queued record. After a crash an
 in-flight lease may take up to 30 seconds to expire. This coordinates transport
@@ -150,3 +149,196 @@ and expired/evicted records remain loss cases. Payloads are readable by same-ori
 JavaScript: enable persistence deliberately for the diagnostic data you collect.
 The SDK does not request persistent-storage permission automatically.
 
+
+## Data policy and admission control
+
+```ts
+import { createClient, redactKeys } from '@gopherex/errotel-sdk'
+
+const redact = redactKeys(['password', 'authorization', 'accessToken', 'refreshToken'])
+const client = createClient({
+  loggerProvider,
+  sanitize(value, context) {
+    // The application owns string redaction, including exception messages/stacks.
+    if (typeof value === 'string') return value.replaceAll(knownSecret, '[REDACTED]')
+    return redact(value, context)
+  },
+  filter: exception => exception.type !== 'ExpectedCancellation',
+  rateLimit: { burst: 10, perSecond: 2 },
+  exceptionLimits: { maxDepth: 8, maxNodes: 32 },
+})
+```
+
+All these policies are optional. The rate limiter is a per-client token bucket
+using monotonic time; it runs before exception extraction, serialization and source
+reads. Distinct errors remain distinct; this does not deduplicate messages/stacks.
+Rejected captures return `not_emitted / filtered`; `stats().rateLimited` and the
+`rate_limited` diagnostic distinguish rate limiting from the user filter. The
+filter receives a detached, sanitized exception before source reads. A filter that
+throws rejects the capture and reports `filter_failed`.
+
+`sanitize(value, { area, name? })` receives detached JSON, then its output is copied
+and validated again. Areas: `source`, `inline`, `breadcrumb`, `exception`,
+`attributes`, `extensions`, `label`. Sources, breadcrumbs and labels are sanitized
+when recorded, before retention in history. Exception strings (including nested
+causes and location URL) are sanitized before Body and mirrored attributes are
+constructed. Source names, breadcrumb names and group keys use `label`.
+`name` identifies the original source/breadcrumb or exception field for the callback.
+The hook cannot rewrite identity, timestamps or trace correlation.
+
+A failed sanitizer never falls back to sending unsanitized data: state receives an
+error status, auxiliary sections are omitted, labels become `[REDACTED]`, exception
+text is omitted with `incomplete: unreadable`. Diagnostics contain codes only.
+A bad attributes/extensions value also omits that section without losing the
+exception, with capture-local `diagnostics` visible in API and UI. Callbacks cannot
+recursively capture or record history. They are synchronous and must remain fast;
+the SDK cannot preempt an infinite loop in application code on the same thread.
+
+`redactKeys()` matches complete object keys case-insensitively at every depth,
+including literal dotted keys; it preserves JSON types and does not parse strings.
+It does not detect secrets embedded in messages, URLs, stacks or JSON strings.
+Configure string redaction explicitly. Resource data and records emitted directly
+through a provider are outside the client's sanitizer; configure those at their
+source. Changing identity/account still requires a fresh outbox namespace. Previously
+persisted data is not retroactively sanitized: clear old queues when changing policy.
+
+## Exception chains and wire compatibility
+
+Wire version remains **1**. Optional fields `exception.cause`, `exception.errors`
+(recursive ExceptionInfo), `exception.incomplete`, and envelope `diagnostics` are
+specified in `docs/protocol.ts` and the runtime JSON Schema. Existing required
+fields retain their meaning. Older readers permit unknown fields; older records
+remain valid. This follows SPEC section 14's additive-field compatibility rule.
+
+The default extraction bounds are 8 cause levels and 32 actual exception nodes
+(including the root). Configure integers 1..256 through `exceptionLimits`. An
+incomplete tree is marked `limit`, `cycle`, or `unreadable`; it is never presented
+as the complete root cause. These bounds apply only to automatic exception-tree
+extraction, not snapshot sizes. Each node contains only name/message/stack and
+explicit cause/error links; arbitrary rejection objects are not fully serialized.
+Cause/errors accessors and arbitrary iterators are never invoked. Repeated references
+in different branches remain distinct entries; ancestral cycles are marked.
+
+Public OpenAPI/TypeScript describe the tree recursively. Ogen 1.20.3 rejects the
+optional recursive tree inside the required exception field; its build-only Go
+projection represents nested ExceptionInfo nodes as lossless raw JSON. The original
+runtime schema still validates the complete payload before it is exposed. This is
+an adapter limitation, not a weakened public wire contract.
+
+## Browser breadcrumbs and React
+
+```ts
+import { instrumentBrowser, createReactErrorHandler } from '@gopherex/errotel-sdk/browser'
+
+const stop = instrumentBrowser(client, {
+  fetch: true,
+  xhr: true,
+  navigation: true,
+  excludeUrls: ['https://collector.example/custom-export-endpoint'],
+})
+// Optional early removal; client.dispose() also removes these instrumentations.
+stop()
+
+// React: use as componentDidCatch(error, info), or React root onCaughtError.
+const onCaughtError = createReactErrorHandler(client, { groupKey: 'react.render' })
+```
+
+Each instrumentation is explicit opt-in; no automatic console, DOM or body capture.
+Requests record method, URL origin/path, status or failure, duration, and the OTel
+context available at request start. Query, fragment and URL credentials are removed;
+paths can still contain sensitive identifiers, so use the sanitizer. Request/response
+bodies and headers are not read. Default `/v1/logs`, `/v1/traces`, `/v1/metrics`
+endpoints are excluded; configure custom telemetry endpoints explicitly.
+Navigation records the resulting URL, not History state. This is diagnostic history,
+not replay or tracing instrumentation. One browser-breadcrumb owner is allowed per
+window; duplicate installation throws. Disposal restores only wrappers still owned
+by this integration, and does not overwrite another library's subsequent wrapper.
+
+The React helper captures `handled: true` and stores the original React component
+stack separately under `extensions["errotel.react"]`. It does not invent JavaScript
+stack frames or depend on React. Attach it at one reporting boundary to avoid
+reporting the same handled error through both componentDidCatch and onCaughtError.
+For React's onUncaughtError, call captureException with `handled: false` instead.
+See [React root error callbacks](https://react.dev/reference/react-dom/client/createRoot#parameters).
+
+## Trace context across async operations
+
+The SDK consumes OTel context; it does not install a tracer provider, global
+context manager or HTTP propagation. If the application already instruments its
+requests, use that provider's active context. Without a working context manager,
+`context.active()` may have no span. Do not assume an async continuation retained it.
+An explicit context works without changing any global configuration:
+
+```ts
+import { context, trace, ROOT_CONTEXT } from '@opentelemetry/api'
+
+const span = applicationTracer.startSpan('save document')
+const operationContext = trace.setSpan(ROOT_CONTEXT, span)
+try {
+  // Supply the context to your HTTP instrumentation/propagation separately.
+  await saveDocument()
+} catch (error) {
+  client.captureException(error, { context: operationContext })
+} finally {
+  span.end()
+}
+```
+
+Use your application's OTel HTTP instrumentation to propagate traceparent to allowed
+backends; this SDK's breadcrumbs do not inject headers or create spans. Explicit
+unsampled contexts are still recorded. See [OTel JavaScript context](https://opentelemetry.io/docs/languages/js/context/).
+
+## Diagnostics, retries and verification
+
+`client.stats()` is a detached synchronous snapshot: attempted/emitted/filtered,
+rateLimited/failed/reentrant, current history entries/evictions, last/max capture
+milliseconds, and counters by diagnostic code. These are client-lifetime counters;
+clearHistory resets only history and its eviction count. Timing includes policy and
+synchronous encoding, not deferred export. No state or secrets appear in statistics.
+
+`await client.outbox.stats()` additionally reports entries/bytes/oldestAgeMs,
+persisted/evicted/expired/invalid/bypassed/storageFailures, exportAttempts,
+accepted/retried/rejected/unpersistedLost and lastAcceptedAt. Delivery counters are
+local to this processor and reset on restart; the pending queue is persisted.
+Accepted counts receiver-success callbacks, not confirmed VM storage. Retried
+counts record attempts that failed transiently, not unique occurrences.
+
+The pinned OTel exporter handles its internal retry timing and Retry-After. The
+outbox performs later retries with exponential jitter. The exporter does not expose
+Retry-After to the processor after completing its own retry cycle; the later outbox
+cycle therefore uses its own delay rather than promising to retain that header. It recognizes permanent
+HTTP 4xx/5xx failures except 429/502/503/504 and removes rejected records with an
+`outbox_export_rejected` diagnostic. Unknown errors retain the record for retry
+until budget/TTL eviction. The browser exporter currently exposes permanent HTTP
+status in an error message: this narrow adapter is pinned and covered by actual
+browser exporter HTTP-response tests. Upgrading OTel requires rerunning them.
+See [OTLP retry rules](https://opentelemetry.io/docs/specs/otlp/#retryable-response-codes).
+
+```sh
+yarn test                          # unit and contract tests
+yarn typecheck:core
+yarn test:browser                  # Chromium VM round-trip + Chromium/Firefox/WebKit SDK tests
+make ci-vm PLAYWRIGHT_INSTALL_FLAGS=--with-deps
+```
+
+Browser SDK tests cover native fetch/XHR/navigation, IndexedDB eviction/expiry/leases,
+sanitation on disk, permanent exporter rejection, offline recovery, large captures
+and 10,000 attempted errors with early rate limiting. Each performance test attaches
+`sdk-performance.json` (10 KiB / 1 MiB p95/max capture latency). Broad timeout guards
+catch pathological stalls; these are measurements on the test machine, not universal
+latency promises. The main Chromium scenario separately uses real VictoriaLogs,
+VictoriaTraces, the read API and UI, including reopening after server restart.
+HTTP-response fixtures are not counted as that real VM round-trip.
+
+
+On Linux distributions unsupported by Playwright's downloaded WebKit binary, run
+that project in the matching pinned test image (no host package changes):
+
+```sh
+docker run --rm --network host --ipc host --user "$(id -u):$(id -g)" \
+  -v "$PWD:$PWD" -w "$PWD" mcr.microsoft.com/playwright:v1.63.0-noble \
+  yarn playwright test --config tests/browser/playwright.config.ts \
+  --project webkit --output test-results/webkit
+```
+
+This container is optional test infrastructure; it is not used by the product.

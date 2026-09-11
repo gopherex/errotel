@@ -601,6 +601,12 @@
             "additionalProperties": {
               "$ref": "#/components/schemas/Wire_json"
             }
+          },
+          "diagnostics": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Wire_diagnostic"
+            }
           }
         },
         "required": [
@@ -792,6 +798,22 @@
             },
             "required": [],
             "additionalProperties": true
+          },
+          "cause": {
+            "$ref": "#/components/schemas/Wire_exceptionInfo"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Wire_exceptionInfo"
+            }
+          },
+          "incomplete": {
+            "enum": [
+              "cycle",
+              "limit",
+              "unreadable"
+            ]
           }
         },
         "required": [
@@ -911,6 +933,37 @@
             "additionalProperties": true
           }
         ]
+      },
+      "Wire_exceptionInfo": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "stacktrace": {
+            "type": "string"
+          },
+          "cause": {
+            "$ref": "#/components/schemas/Wire_exceptionInfo"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Wire_exceptionInfo"
+            }
+          },
+          "incomplete": {
+            "enum": [
+              "cycle",
+              "limit",
+              "unreadable"
+            ]
+          }
+        },
+        "additionalProperties": true
       },
       "TimeRange": {
         "type": "object",

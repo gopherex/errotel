@@ -15,3 +15,11 @@ and OTLP/HTTP protobuf exporter. `/protocol` is a type-only entry point.
 The SDK sends to your OTLP pipeline, independently of the ErrOtel read server.
 See the project README for initialization, state sources, lifecycle, optional
 IndexedDB persistence, CORS/CSP and delivery limitations.
+
+
+`/browser` provides opt-in fetch/XHR/navigation breadcrumbs and a React error-handler
+helper without a React runtime dependency. Core options include `sanitize`,
+`filter`, `rateLimit`, and bounded automatic exception causes. `client.stats()` and
+`client.outbox.stats()` expose capture and delivery diagnostics without user data.
+See the [SDK guide](https://github.com/gopherex/errotel/blob/master/docs/sdk.md) for
+policies, wire compatibility, trace context, lifecycle and browser tests.

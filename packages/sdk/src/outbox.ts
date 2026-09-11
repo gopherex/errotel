@@ -1,3 +1,4 @@
+import { deliveryOutcome, type DeliveryOutcome, type DeliveryStats } from './delivery.js'
 import type {
   LogRecordExporter,
   LogRecordProcessor,
@@ -10,6 +11,19 @@ export type { OutboxOptions } from './outbox-store.js'
 
 /** Opt-in processor for the owned browser provider, using the standard protobuf exporter. */
 export class PersistentLogProcessor implements LogRecordProcessor {
+  private readonly counters: DeliveryStats = {
+    exportAttempts: 0,
+    accepted: 0,
+    retried: 0,
+    rejected: 0,
+    persisted: 0,
+    evicted: 0,
+    expired: 0,
+    invalid: 0,
+    bypassed: 0,
+    unpersistedLost: 0,
+    storageFailures: 0,
+  }
   private readonly owner = crypto.randomUUID()
   private readonly limits
   private readonly store: Promise<OutboxStore>
@@ -73,6 +87,7 @@ export class PersistentLogProcessor implements LogRecordProcessor {
         this.pendingBytes + bytes > this.limits.maxBytes ||
         this.writes.size >= this.limits.maxEntries
       ) {
+        this.counters.bypassed++
         this.report('outbox_capacity_bypass')
         this.fallback(record)
         return
@@ -102,12 +117,20 @@ export class PersistentLogProcessor implements LogRecordProcessor {
   private async persist(entry: StoredExport, record: ReadableLogRecord) {
     try {
       const result = await (await this.store).put(entry)
-      if (result.evicted) this.report('outbox_evicted')
+      if (result.evicted) {
+        this.counters.evicted += result.evicted
+        this.report('outbox_evicted')
+      }
       if (!result.stored) {
+        this.counters.bypassed++
         this.report('outbox_capacity_bypass')
         this.fallback(record)
-      } else this.kick()
+      } else {
+        this.counters.persisted++
+        this.kick()
+      }
     } catch {
+      this.counters.storageFailures++
       this.storageFailed = true
       this.report('outbox_storage_failed')
       this.fallback(record)
@@ -116,31 +139,40 @@ export class PersistentLogProcessor implements LogRecordProcessor {
 
   private fallback(record: ReadableLogRecord) {
     void this.send([record]).then((success) => {
-      if (!success) this.report('outbox_unpersisted_export_failed')
+      if (success !== 'accepted') {
+        this.counters.unpersistedLost++
+        this.report('outbox_unpersisted_export_failed')
+      }
     })
   }
 
-  private send(records: ReadableLogRecord[]): Promise<boolean> {
+  private send(records: ReadableLogRecord[]): Promise<DeliveryOutcome> {
     if (this.inFlight >= 4) {
       this.report('outbox_export_busy')
-      return Promise.resolve(false)
+      return Promise.resolve('retry')
     }
     this.inFlight++
+    this.counters.exportAttempts++
     return new Promise((resolve) => {
       let finished = false
-      const done = (success: boolean) => {
+      const done = (outcome: DeliveryOutcome) => {
         if (finished) return
         finished = true
         clearTimeout(timer)
         this.inFlight--
-        resolve(success)
+        if (outcome === 'accepted') {
+          this.counters.accepted += records.length
+          this.counters.lastAcceptedAt = Date.now()
+        } else if (outcome === 'rejected') this.counters.rejected += records.length
+        else this.counters.retried += records.length
+        resolve(outcome)
       }
       // Owned exporter has a shorter timeout; the extra guard also isolates exporter bugs.
-      const timer = setTimeout(() => done(false), 12_000)
+      const timer = setTimeout(() => done('retry'), 12_000)
       try {
-        this.exporter.export(records, (result) => done(result.code === 0))
+        this.exporter.export(records, (result) => done(deliveryOutcome(result)))
       } catch {
-        done(false)
+        done('retry')
       }
     })
   }
@@ -163,7 +195,10 @@ export class PersistentLogProcessor implements LogRecordProcessor {
     let remaining = force ? this.limits.maxEntries : 32
     while (remaining > 0) {
       const claimed = await store.claim(this.owner, force)
-      if (claimed.expired) this.report('outbox_expired')
+      if (claimed.expired) {
+        this.counters.expired += claimed.expired
+        this.report('outbox_expired')
+      }
       if (!claimed.entries.length) return
       const entries: StoredExport[] = [],
         records: ReadableLogRecord[] = []
@@ -173,14 +208,16 @@ export class PersistentLogProcessor implements LogRecordProcessor {
           entries.push(entry)
         } catch {
           await store.finish([entry], this.owner, true)
+          this.counters.invalid++
           this.report('outbox_invalid_record')
         }
       }
       remaining -= claimed.entries.length
       if (!entries.length) continue
       const success = await this.send(records)
-      await store.finish(entries, this.owner, success)
-      if (!success) {
+      await store.finish(entries, this.owner, success !== 'retry')
+      if (success === 'rejected') this.report('outbox_export_rejected')
+      if (success === 'retry') {
         this.report('outbox_export_failed')
         return
       }
@@ -195,7 +232,7 @@ export class PersistentLogProcessor implements LogRecordProcessor {
 
   async stats() {
     await this.flushStorage()
-    return (await this.store).stats()
+    return { ...(await (await this.store).stats()), ...this.counters }
   }
 
   async clear() {

@@ -1,3 +1,4 @@
+import './sdk-version.mjs'
 import { copyFile, mkdir } from 'node:fs/promises'
 // docs are the source of truth; generated copies are checked by contract tests.
 await mkdir('services/errotel/internal/envelope', { recursive: true })

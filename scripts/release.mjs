@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process'
 import { createInterface } from 'node:readline/promises'
 import { releaseMenu } from './release-menu.mjs'
-import { checkVersion, manifests, setVersion, versionOf } from './release-version.mjs'
+import { checkVersion, releaseFiles, setVersion, versionOf } from './release-version.mjs'
 
 const git = (...args) => execFileSync('git', args, { encoding: 'utf8' }).trim()
 const run = (command, args) => execFileSync(command, args, { stdio: 'inherit' })
@@ -96,7 +96,7 @@ try {
     run('yarn', ['install', '--frozen-lockfile'])
     run('make', ['ci'])
     checkVersion(target)
-    const allowed = new Set(manifests)
+    const allowed = new Set(releaseFiles)
     const changed = git('diff', '--name-only').split('\n').filter(Boolean)
     if (
       changed.some((file) => !allowed.has(file)) ||
@@ -105,7 +105,7 @@ try {
       throw new Error(
         'Validation changed files outside the version manifests; review before retrying'
       )
-    run('git', ['add', '--', ...manifests])
+    run('git', ['add', '--', ...releaseFiles])
     if (git('diff', '--cached', '--name-only'))
       run('git', ['commit', '-m', `chore(release): bump version to ${tag}`])
     run('git', ['tag', '-a', tag, '-m', tag])

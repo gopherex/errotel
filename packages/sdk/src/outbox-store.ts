@@ -1,3 +1,4 @@
+import { retryDelay } from './delivery.js'
 /** Private IndexedDB format; never part of the app-debug wire contract. */
 export interface OutboxOptions {
   /** Stable application/account namespace. Change on account or tenant changes. */
@@ -189,7 +190,7 @@ export class OutboxStore {
           if (success) store.delete(row.id)
           else {
             row.attempts++
-            row.next = Date.now() + Math.min(60_000, 1000 * 2 ** Math.min(row.attempts, 6))
+            row.next = Date.now() + retryDelay(row.attempts)
             delete row.owner
             delete row.lease
             store.put(row)
@@ -200,25 +201,29 @@ export class OutboxStore {
     })
   }
   async stats() {
-    return this.transaction<{ entries: number; bytes: number }>((store, done) => {
-      let entries = 0,
-        bytes = 0
-      const request = store.openCursor()
-      request.onsuccess = () => {
-        const cursor = request.result
-        if (!cursor) {
-          done({ entries, bytes })
-          return
+    return this.transaction<{ entries: number; bytes: number; oldestAgeMs: number }>(
+      (store, done) => {
+        let entries = 0,
+          bytes = 0,
+          oldestAgeMs = 0
+        const request = store.openCursor()
+        request.onsuccess = () => {
+          const cursor = request.result
+          if (!cursor) {
+            done({ entries, bytes, oldestAgeMs })
+            return
+          }
+          const row = cursor.value as StoredExport
+          // Expiry is deleted by claim/put, which also report the diagnostic count.
+          if (row.expires > Date.now()) {
+            entries++
+            bytes += row.bytes
+            oldestAgeMs = Math.max(oldestAgeMs, Date.now() - row.created)
+          }
+          cursor.continue()
         }
-        const row = cursor.value as StoredExport
-        // Expiry is deleted by claim/put, which also report the diagnostic count.
-        if (row.expires > Date.now()) {
-          entries++
-          bytes += row.bytes
-        }
-        cursor.continue()
       }
-    })
+    )
   }
   async clear() {
     return this.transaction<void>((store, done) => {

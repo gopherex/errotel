@@ -358,3 +358,14 @@ ErrOtel is MIT licensed. UI components use Mantine, TanStack Table, CodeMirror, 
 selected MIT HyperDX JSON/waterfall components. Vendored source, commit, changes and copyrights
 are recorded in [HyperDX NOTICE](app/src/vendor/hyperdx/NOTICE.md) and distributed at
 `/third-party-notices.txt`. No complete observability application is embedded.
+
+
+### SDK data policy and browser context
+
+The [SDK guide](docs/sdk.md) describes pre-storage sanitization, optional error-rate
+limits and filtering, immutable state/history, exception cause trees, fetch/XHR and
+navigation breadcrumbs, React error handling, explicit OTel context, and capture /
+delivery statistics. These features use the same browser → OTLP → VM path. The
+server remains a stateless reader. The [browser tests](tests/browser/sdk-browser.spec.ts)
+exercise native APIs and storage in Chromium, Firefox and WebKit; the separate
+round-trip suite verifies real VM storage and reopening errors after server restart.

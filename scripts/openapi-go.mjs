@@ -24,6 +24,10 @@ const spec = project(JSON.parse(await readFile('openapi/openapi.json', 'utf8')))
 spec.openapi = '3.0.3'
 // Arbitrary user JSON must stay lossless. Ogen's raw Any type preserves null,
 // numbers and unknown keys; the ORIGINAL envelope schema validates it on read.
+// Ogen cannot generate the optional recursive exception tree inside a required
+// exception. Preserve nested nodes as raw JSON in Go only; the original runtime
+// schema validates every node. Public OpenAPI and TS retain the recursive types.
+spec.components.schemas.Wire_exceptionInfo = { type: 'object', additionalProperties: {} }
 spec.components.schemas.Wire_json = {}
 await mkdir('openapi/.build', { recursive: true })
 await writeFile('openapi/.build/openapi-go.json', `${JSON.stringify(spec, null, 2)}\n`)

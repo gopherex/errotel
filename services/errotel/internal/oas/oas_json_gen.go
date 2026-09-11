@@ -1378,6 +1378,16 @@ func (s *DebugEnvelopeV1) encodeFields(e *jx.Encoder) {
 			s.Extensions.Encode(e)
 		}
 	}
+	{
+		if s.Diagnostics != nil {
+			e.FieldStart("diagnostics")
+			e.ArrStart()
+			for _, elem := range s.Diagnostics {
+				elem.Encode(e)
+			}
+			e.ArrEnd()
+		}
+	}
 	for k, elem := range s.AdditionalProps {
 		e.FieldStart(k)
 
@@ -1387,7 +1397,7 @@ func (s *DebugEnvelopeV1) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfDebugEnvelopeV1 = [13]string{
+var jsonFieldsNameOfDebugEnvelopeV1 = [14]string{
 	0:  "schema",
 	1:  "schemaVersion",
 	2:  "kind",
@@ -1401,6 +1411,7 @@ var jsonFieldsNameOfDebugEnvelopeV1 = [13]string{
 	10: "history",
 	11: "groupKey",
 	12: "extensions",
+	13: "diagnostics",
 }
 
 // Decode decodes DebugEnvelopeV1 from json.
@@ -1544,6 +1555,23 @@ func (s *DebugEnvelopeV1) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"extensions\"")
+			}
+		case "diagnostics":
+			if err := func() error {
+				s.Diagnostics = make([]WireDiagnostic, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem WireDiagnostic
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.Diagnostics = append(s.Diagnostics, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"diagnostics\"")
 			}
 		default:
 			var elem jx.Raw
@@ -6159,6 +6187,73 @@ func (s *OptWireCapturedValue) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes WireExceptionIncomplete as json.
+func (o OptWireExceptionIncomplete) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	e.Str(string(o.Value))
+}
+
+// Decode decodes WireExceptionIncomplete from json.
+func (o *OptWireExceptionIncomplete) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptWireExceptionIncomplete to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptWireExceptionIncomplete) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptWireExceptionIncomplete) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes WireExceptionInfo as json.
+func (o OptWireExceptionInfo) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	o.Value.Encode(e)
+}
+
+// Decode decodes WireExceptionInfo from json.
+func (o *OptWireExceptionInfo) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptWireExceptionInfo to nil")
+	}
+	o.Set = true
+	o.Value = make(WireExceptionInfo)
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptWireExceptionInfo) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptWireExceptionInfo) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes WireExceptionLocation as json.
 func (o OptWireExceptionLocation) Encode(e *jx.Encoder) {
 	if !o.Set {
@@ -10485,6 +10580,28 @@ func (s *WireException) encodeFields(e *jx.Encoder) {
 			s.Location.Encode(e)
 		}
 	}
+	{
+		if s.Cause.Set {
+			e.FieldStart("cause")
+			s.Cause.Encode(e)
+		}
+	}
+	{
+		if s.Errors != nil {
+			e.FieldStart("errors")
+			e.ArrStart()
+			for _, elem := range s.Errors {
+				elem.Encode(e)
+			}
+			e.ArrEnd()
+		}
+	}
+	{
+		if s.Incomplete.Set {
+			e.FieldStart("incomplete")
+			s.Incomplete.Encode(e)
+		}
+	}
 	for k, elem := range s.AdditionalProps {
 		e.FieldStart(k)
 
@@ -10494,13 +10611,16 @@ func (s *WireException) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfWireException = [6]string{
+var jsonFieldsNameOfWireException = [9]string{
 	0: "type",
 	1: "message",
 	2: "stacktrace",
 	3: "mechanism",
 	4: "handled",
 	5: "location",
+	6: "cause",
+	7: "errors",
+	8: "incomplete",
 }
 
 // Decode decodes WireException from json.
@@ -10508,7 +10628,7 @@ func (s *WireException) Decode(d *jx.Decoder) error {
 	if s == nil {
 		return errors.New("invalid: unable to decode WireException to nil")
 	}
-	var requiredBitSet [1]uint8
+	var requiredBitSet [2]uint8
 	s.AdditionalProps = map[string]jx.Raw{}
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
@@ -10573,6 +10693,43 @@ func (s *WireException) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"location\"")
 			}
+		case "cause":
+			if err := func() error {
+				s.Cause.Reset()
+				if err := s.Cause.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"cause\"")
+			}
+		case "errors":
+			if err := func() error {
+				s.Errors = make([]WireExceptionInfo, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem WireExceptionInfo
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.Errors = append(s.Errors, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"errors\"")
+			}
+		case "incomplete":
+			if err := func() error {
+				s.Incomplete.Reset()
+				if err := s.Incomplete.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"incomplete\"")
+			}
 		default:
 			var elem jx.Raw
 			if err := func() error {
@@ -10593,8 +10750,9 @@ func (s *WireException) Decode(d *jx.Decoder) error {
 	}
 	// Validate required fields.
 	var failures []validate.FieldError
-	for i, mask := range [1]uint8{
+	for i, mask := range [2]uint8{
 		0b00001000,
+		0b00000000,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -10694,6 +10852,106 @@ func (s WireExceptionAdditional) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *WireExceptionAdditional) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes WireExceptionIncomplete as json.
+func (s WireExceptionIncomplete) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes WireExceptionIncomplete from json.
+func (s *WireExceptionIncomplete) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode WireExceptionIncomplete to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch WireExceptionIncomplete(v) {
+	case WireExceptionIncompleteCycle:
+		*s = WireExceptionIncompleteCycle
+	case WireExceptionIncompleteLimit:
+		*s = WireExceptionIncompleteLimit
+	case WireExceptionIncompleteUnreadable:
+		*s = WireExceptionIncompleteUnreadable
+	default:
+		*s = WireExceptionIncomplete(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s WireExceptionIncomplete) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *WireExceptionIncomplete) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s WireExceptionInfo) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields implements json.Marshaler.
+func (s WireExceptionInfo) encodeFields(e *jx.Encoder) {
+	for k, elem := range s {
+		e.FieldStart(k)
+
+		if len(elem) != 0 {
+			e.Raw(elem)
+		}
+	}
+}
+
+// Decode decodes WireExceptionInfo from json.
+func (s *WireExceptionInfo) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode WireExceptionInfo to nil")
+	}
+	m := s.init()
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		var elem jx.Raw
+		if err := func() error {
+			v, err := d.RawAppend(nil)
+			elem = jx.Raw(v)
+			if err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrapf(err, "decode field %q", k)
+		}
+		m[string(k)] = elem
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode WireExceptionInfo")
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s WireExceptionInfo) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *WireExceptionInfo) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

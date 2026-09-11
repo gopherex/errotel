@@ -1,6 +1,20 @@
 import { context, trace, isSpanContextValid, ROOT_CONTEXT, type Context } from '@opentelemetry/api'
 import { SeverityNumber, type LoggerProvider, type LogAttributes } from '@opentelemetry/api-logs'
 import { materialize } from './json.js'
+import { SDK_VERSION } from './version.js'
+export { SDK_VERSION } from './version.js'
+import { exceptionReader, type ExceptionLimits } from './exception.js'
+import {
+  tokenBucket,
+  type Sanitizer,
+  type DataArea,
+  type RateLimit,
+  type CaptureFilter,
+  type ClientStats,
+} from './policy.js'
+export { redactKeys } from './policy.js'
+export type { Sanitizer, SanitizeContext, ClientStats, RateLimit } from './policy.js'
+export type { ExceptionLimits } from './exception.js'
 import type {
   CaptureDiagnostic,
   CapturedValue,
@@ -19,6 +33,10 @@ export type * from './protocol.js'
 export interface ClientOptions {
   loggerProvider: LoggerProvider
   captureUnhandled?: boolean
+  sanitize?: Sanitizer
+  filter?: CaptureFilter
+  rateLimit?: RateLimit
+  exceptionLimits?: ExceptionLimits
   history?: { enabled?: boolean; maxEntries?: number; maxAgeMs?: number | null }
   onDiagnostic?: (diagnostic: CaptureDiagnostic) => void
   flush?: () => Promise<void>
@@ -66,38 +84,23 @@ function correlation(explicit?: Context): { context: Context; trace?: TraceRef }
   }
   return { context: ROOT_CONTEXT }
 }
-function exceptionData(
-  value: unknown,
-  mechanism: ExceptionData['mechanism'],
-  handled?: boolean
-): ExceptionData {
-  const result: {
-    type?: string
-    message?: string
-    stacktrace?: string
-    mechanism: ExceptionData['mechanism']
-    handled?: boolean
-  } = { mechanism }
-  if (handled !== undefined) result.handled = handled
-  if (value !== null && (typeof value === 'object' || typeof value === 'function')) {
-    for (const [key, dest] of [
-      ['name', 'type'],
-      ['message', 'message'],
-      ['stack', 'stacktrace'],
-    ] as const) {
-      try {
-        const v = (value as Record<string, unknown>)[key]
-        if (typeof v === 'string') result[dest] = v
-      } catch {
-        /* A hostile exception getter is isolated. */
-      }
-    }
-  } else result.message = String(value)
-  return result
-}
-
 export function createClient(options: ClientOptions) {
-  const logger = options.loggerProvider.getLogger('app-debug.browser', '0.1.0')
+  const logger = options.loggerProvider.getLogger('app-debug.browser', SDK_VERSION)
+  const exceptionData = exceptionReader(options.exceptionLimits)
+  const allowCapture = tokenBucket(options.rateLimit)
+  const counts = {
+    attempted: 0,
+    emitted: 0,
+    filtered: 0,
+    rateLimited: 0,
+    failed: 0,
+    reentrant: 0,
+    lastCaptureMs: 0,
+    maxCaptureMs: 0,
+  }
+  const diagnosticCounts: Record<string, number> = Object.create(null)
+  let captureDiagnostics: CaptureDiagnostic[] | undefined
+  let policyRunning = false
   const enabled = options.history?.enabled ?? true
   const maxEntries = options.history?.maxEntries ?? 100
   const maxAgeMs = options.history?.maxAgeMs === undefined ? 30_000 : options.history.maxAgeMs
@@ -115,6 +118,7 @@ export function createClient(options: ClientOptions) {
   let closed = false,
     capturing = false,
     diagnosing = false
+  const cleanups = new Set<() => void>()
   const reading = new Set<string>()
   const sources = new Map<
     string,
@@ -125,6 +129,13 @@ export function createClient(options: ClientOptions) {
     stage: CaptureDiagnostic['stage'] = 'capture'
   ): CaptureDiagnostic {
     const d = { code, stage }
+    diagnosticCounts[code] = (diagnosticCounts[code] ?? 0) + 1
+    if (
+      captureDiagnostics &&
+      !captureDiagnostics.some((item) => item.code === code) &&
+      captureDiagnostics.length < 64
+    )
+      captureDiagnostics.push(d)
     if (!diagnosing) {
       diagnosing = true
       try {
@@ -136,6 +147,59 @@ export function createClient(options: ClientOptions) {
       }
     }
     return d
+  }
+  function clean(value: unknown, area: DataArea, name?: string): JsonValue {
+    const copy = materialize(value)
+    if (!options.sanitize) return copy
+    policyRunning = true
+    try {
+      return materialize(options.sanitize(copy, { area, name }))
+    } finally {
+      policyRunning = false
+    }
+  }
+  function label(value: string): string {
+    try {
+      const output = clean(value, 'label')
+      if (typeof output !== 'string' || !output) throw new TypeError('invalid_label')
+      return output
+    } catch {
+      diagnostic('sanitize_failed')
+      return '[REDACTED]'
+    }
+  }
+  function cleanException(input: ExceptionData): ExceptionData {
+    if (!options.sanitize) return input
+    try {
+      const visit = (
+        node: import('./protocol.js').ExceptionInfo
+      ): import('./protocol.js').ExceptionInfo => {
+        const result = { ...node }
+        for (const key of ['type', 'message', 'stacktrace'] as const) {
+          if (node[key] === undefined) continue
+          const text = clean(node[key], 'exception', key)
+          if (typeof text !== 'string') throw new TypeError('invalid_exception_text')
+          result[key] = text
+        }
+        if (node.cause) result.cause = visit(node.cause)
+        if (node.errors) result.errors = node.errors.map(visit)
+        return result
+      }
+      const result = { ...input, ...visit(input) }
+      if (input.location?.url !== undefined) {
+        const url = clean(input.location.url, 'exception', 'url')
+        if (typeof url !== 'string') throw new TypeError('invalid_location')
+        result.location = { ...input.location, url }
+      }
+      return result
+    } catch {
+      diagnostic('sanitize_failed')
+      return {
+        mechanism: input.mechanism,
+        ...(input.handled === undefined ? {} : { handled: input.handled }),
+        incomplete: 'unreadable',
+      }
+    }
   }
   function clearHistory() {
     history = []
@@ -161,7 +225,12 @@ export function createClient(options: ClientOptions) {
       history = history.slice(history.length - maxEntries)
     }
   }
-  function captured(value: unknown, serializer?: (value: unknown) => JsonValue): CapturedValue {
+  function captured(
+    value: unknown,
+    serializer?: (value: unknown) => JsonValue,
+    area: DataArea = 'inline',
+    name?: string
+  ): CapturedValue {
     if (serializer) {
       try {
         value = serializer(value)
@@ -170,9 +239,15 @@ export function createClient(options: ClientOptions) {
       }
     }
     try {
-      return { status: 'ok', value: materialize(value) }
+      return { status: 'ok', value: clean(value, area, name) }
     } catch {
-      return { status: 'error', error: diagnostic('invalid_json', 'validate') }
+      return {
+        status: 'error',
+        error: diagnostic(
+          options.sanitize ? 'sanitize_or_json_failed' : 'invalid_json',
+          'validate'
+        ),
+      }
     }
   }
   function snapshot(
@@ -180,7 +255,7 @@ export function createClient(options: ClientOptions) {
     registration: NonNullable<ReturnType<typeof sources.get>>
   ): SourceSnapshot {
     const base = {
-      name,
+      name: label(name),
       registrationId: registration.registrationId,
       capturedAtUnixNano: nano(),
       monotonicMs: mono(),
@@ -195,7 +270,7 @@ export function createClient(options: ClientOptions) {
       } catch {
         return { ...base, status: 'error', error: diagnostic('reader_failed', 'read') }
       }
-      return { ...base, ...captured(value, registration.source.serialize) }
+      return { ...base, ...captured(value, registration.source.serialize, 'source', name) }
     } finally {
       reading.delete(registration.registrationId)
     }
@@ -226,7 +301,7 @@ export function createClient(options: ClientOptions) {
     data?: JsonValue,
     ctx?: Context
   ): HistoryResult {
-    if (closed || diagnosing || !enabled || !name) {
+    if (closed || diagnosing || policyRunning || !enabled || !name) {
       diagnostic('history_unavailable')
       return { status: 'not_recorded', reason: 'closed_disabled_or_invalid' }
     }
@@ -249,7 +324,12 @@ export function createClient(options: ClientOptions) {
             kind,
             snapshot: snapshot(name, registration as NonNullable<typeof registration>),
           }
-        : { ...base, kind, name, ...(data === undefined ? {} : { data: captured(data) }) }
+        : {
+            ...base,
+            kind,
+            name: label(name),
+            ...(data === undefined ? {} : { data: captured(data, undefined, 'breadcrumb', name) }),
+          }
     history.push(item)
     prune(mono())
     return { status: 'recorded', id: item.id }
@@ -260,10 +340,25 @@ export function createClient(options: ClientOptions) {
     mechanism: ExceptionData['mechanism'] = 'manual',
     location?: ExceptionData['location']
   ): CaptureResult {
-    if (closed) return { status: 'not_emitted', reason: 'closed' }
-    if (capturing || diagnosing) return { status: 'not_emitted', reason: 'reentrant' }
+    counts.attempted++
+    if (closed) {
+      counts.failed++
+      return { status: 'not_emitted', reason: 'closed' }
+    }
+    if (capturing || diagnosing || policyRunning) {
+      counts.reentrant++
+      return { status: 'not_emitted', reason: 'reentrant' }
+    }
     capturing = true
+    const started = mono()
+    captureDiagnostics = []
     try {
+      if (!allowCapture()) {
+        counts.filtered++
+        counts.rateLimited++
+        diagnostic('rate_limited')
+        return { status: 'not_emitted', reason: 'filtered' }
+      }
       const timestamp = nano(),
         monotonicMs = mono(),
         seq = nextSequence()
@@ -276,9 +371,35 @@ export function createClient(options: ClientOptions) {
         items: opts.includeHistory === false ? [] : [...history],
       }
       const registrations = [...sources]
-      const exception = {
+      const exception = cleanException({
         ...exceptionData(value, mechanism, mechanism === 'manual' ? opts.handled : false),
         ...(location ? { location } : {}),
+      })
+      if (options.filter) {
+        let accepted = false
+        policyRunning = true
+        try {
+          accepted = options.filter(materialize(exception) as unknown as ExceptionData) === true
+        } catch {
+          diagnostic('filter_failed')
+        } finally {
+          policyRunning = false
+        }
+        if (!accepted) {
+          counts.filtered++
+          return { status: 'not_emitted', reason: 'filtered' }
+        }
+      }
+      let extensions: Record<string, JsonValue> | undefined
+      if (opts.extensions !== undefined) {
+        try {
+          const data = clean(opts.extensions, 'extensions')
+          if (!data || typeof data !== 'object' || Array.isArray(data))
+            throw new TypeError('invalid_extensions')
+          extensions = data as Record<string, JsonValue>
+        } catch {
+          diagnostic('extensions_omitted')
+        }
       }
       const envelope: DebugEnvelopeV1 = {
         schema: 'app-debug',
@@ -298,10 +419,9 @@ export function createClient(options: ClientOptions) {
           ...('state' in opts ? { inline: captured(opts.state, opts.serializeState) } : {}),
         },
         history: retained,
-        ...(opts.groupKey === undefined ? {} : { groupKey: opts.groupKey }),
-        ...(opts.extensions === undefined
-          ? {}
-          : { extensions: materialize(opts.extensions) as Record<string, JsonValue> }),
+        ...(opts.groupKey === undefined ? {} : { groupKey: label(opts.groupKey) }),
+        ...(extensions === undefined ? {} : { extensions }),
+        diagnostics: captureDiagnostics,
       }
       if (opts.groupKey !== undefined && !opts.groupKey) throw new TypeError('empty_group_key')
       if (
@@ -313,7 +433,15 @@ export function createClient(options: ClientOptions) {
         throw new TypeError('invalid_severity')
       const attrs: LogAttributes = Object.create(null)
       if (opts.attributes) {
-        const user = materialize(opts.attributes) as Record<string, JsonValue>
+        let user: Record<string, JsonValue> = Object.create(null)
+        try {
+          const data = clean(opts.attributes, 'attributes')
+          if (!data || typeof data !== 'object' || Array.isArray(data))
+            throw new TypeError('invalid_attributes')
+          user = data as Record<string, JsonValue>
+        } catch {
+          diagnostic('attributes_omitted')
+        }
         for (const [key, val] of Object.entries(user)) {
           if (
             /^(app\.debug\.|exception\.|_|trace_id$|span_id$|severity_|event_name$|scope\.|service\.|deployment\.)/.test(
@@ -354,14 +482,20 @@ export function createClient(options: ClientOptions) {
           attributes: attrs,
         })
       } catch {
+        counts.failed++
         diagnostic('emit_failed')
         return { status: 'not_emitted', reason: 'emit_failed' }
       }
+      counts.emitted++
       return { status: 'emitted', eventId: envelope.eventId }
     } catch {
+      counts.failed++
       diagnostic('encode_failed')
       return { status: 'not_emitted', reason: 'encode_failed' }
     } finally {
+      counts.lastCaptureMs = mono() - started
+      counts.maxCaptureMs = Math.max(counts.maxCaptureMs, counts.lastCaptureMs)
+      captureDiagnostics = undefined
       capturing = false
     }
   }
@@ -393,6 +527,13 @@ export function createClient(options: ClientOptions) {
     }
   }
   return {
+    onDispose: (cleanup: () => void) => {
+      if (closed) cleanup()
+      else cleanups.add(cleanup)
+      return () => {
+        cleanups.delete(cleanup)
+      }
+    },
     registerState,
     captureException: (value: unknown, opts?: CaptureOptions) => capture(value, opts),
     addBreadcrumb: (name: string, data?: JsonValue, opts?: { context?: Context }) =>
@@ -400,6 +541,12 @@ export function createClient(options: ClientOptions) {
     recordState: (name: string, opts?: { context?: Context }) =>
       add('state', name, undefined, opts?.context),
     clearHistory,
+    stats: (): ClientStats => ({
+      ...counts,
+      historyEntries: history.length,
+      historyEvicted: evicted,
+      diagnostics: { ...diagnosticCounts },
+    }),
     flush: async () => {
       await options.flush?.()
     },
@@ -407,6 +554,14 @@ export function createClient(options: ClientOptions) {
       if (!closed) {
         closed = true
         removeHandlers()
+        for (const cleanup of cleanups) {
+          try {
+            cleanup()
+          } catch {
+            diagnostic('cleanup_failed')
+          }
+        }
+        cleanups.clear()
         sources.clear()
         clearHistory()
       }

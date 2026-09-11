@@ -857,6 +857,7 @@ type DebugEnvelopeV1 struct {
 	History           DebugEnvelopeV1History       `json:"history"`
 	GroupKey          OptString                    `json:"groupKey"`
 	Extensions        OptDebugEnvelopeV1Extensions `json:"extensions"`
+	Diagnostics       []WireDiagnostic             `json:"diagnostics"`
 	AdditionalProps   DebugEnvelopeV1Additional
 }
 
@@ -923,6 +924,11 @@ func (s *DebugEnvelopeV1) GetGroupKey() OptString {
 // GetExtensions returns the value of Extensions.
 func (s *DebugEnvelopeV1) GetExtensions() OptDebugEnvelopeV1Extensions {
 	return s.Extensions
+}
+
+// GetDiagnostics returns the value of Diagnostics.
+func (s *DebugEnvelopeV1) GetDiagnostics() []WireDiagnostic {
+	return s.Diagnostics
 }
 
 // GetAdditionalProps returns the value of AdditionalProps.
@@ -993,6 +999,11 @@ func (s *DebugEnvelopeV1) SetGroupKey(val OptString) {
 // SetExtensions sets the value of Extensions.
 func (s *DebugEnvelopeV1) SetExtensions(val OptDebugEnvelopeV1Extensions) {
 	s.Extensions = val
+}
+
+// SetDiagnostics sets the value of Diagnostics.
+func (s *DebugEnvelopeV1) SetDiagnostics(val []WireDiagnostic) {
+	s.Diagnostics = val
 }
 
 // SetAdditionalProps sets the value of AdditionalProps.
@@ -3596,6 +3607,98 @@ func (o OptWireCapturedValue) Or(d WireCapturedValue) WireCapturedValue {
 	return d
 }
 
+// NewOptWireExceptionIncomplete returns new OptWireExceptionIncomplete with value set to v.
+func NewOptWireExceptionIncomplete(v WireExceptionIncomplete) OptWireExceptionIncomplete {
+	return OptWireExceptionIncomplete{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptWireExceptionIncomplete is optional WireExceptionIncomplete.
+type OptWireExceptionIncomplete struct {
+	Value WireExceptionIncomplete
+	Set   bool
+}
+
+// IsSet returns true if OptWireExceptionIncomplete was set.
+func (o OptWireExceptionIncomplete) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptWireExceptionIncomplete) Reset() {
+	var v WireExceptionIncomplete
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptWireExceptionIncomplete) SetTo(v WireExceptionIncomplete) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptWireExceptionIncomplete) Get() (v WireExceptionIncomplete, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptWireExceptionIncomplete) Or(d WireExceptionIncomplete) WireExceptionIncomplete {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptWireExceptionInfo returns new OptWireExceptionInfo with value set to v.
+func NewOptWireExceptionInfo(v WireExceptionInfo) OptWireExceptionInfo {
+	return OptWireExceptionInfo{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptWireExceptionInfo is optional WireExceptionInfo.
+type OptWireExceptionInfo struct {
+	Value WireExceptionInfo
+	Set   bool
+}
+
+// IsSet returns true if OptWireExceptionInfo was set.
+func (o OptWireExceptionInfo) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptWireExceptionInfo) Reset() {
+	var v WireExceptionInfo
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptWireExceptionInfo) SetTo(v WireExceptionInfo) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptWireExceptionInfo) Get() (v WireExceptionInfo, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptWireExceptionInfo) Or(d WireExceptionInfo) WireExceptionInfo {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptWireExceptionLocation returns new OptWireExceptionLocation with value set to v.
 func NewOptWireExceptionLocation(v WireExceptionLocation) OptWireExceptionLocation {
 	return OptWireExceptionLocation{
@@ -5744,12 +5847,15 @@ func (s *WireDiagnosticStage) UnmarshalText(data []byte) error {
 
 // Ref: #/components/schemas/Wire_exception
 type WireException struct {
-	Type            OptString                `json:"type"`
-	Message         OptString                `json:"message"`
-	Stacktrace      OptString                `json:"stacktrace"`
-	Mechanism       WireExceptionMechanism   `json:"mechanism"`
-	Handled         OptBool                  `json:"handled"`
-	Location        OptWireExceptionLocation `json:"location"`
+	Type            OptString                  `json:"type"`
+	Message         OptString                  `json:"message"`
+	Stacktrace      OptString                  `json:"stacktrace"`
+	Mechanism       WireExceptionMechanism     `json:"mechanism"`
+	Handled         OptBool                    `json:"handled"`
+	Location        OptWireExceptionLocation   `json:"location"`
+	Cause           OptWireExceptionInfo       `json:"cause"`
+	Errors          []WireExceptionInfo        `json:"errors"`
+	Incomplete      OptWireExceptionIncomplete `json:"incomplete"`
 	AdditionalProps WireExceptionAdditional
 }
 
@@ -5781,6 +5887,21 @@ func (s *WireException) GetHandled() OptBool {
 // GetLocation returns the value of Location.
 func (s *WireException) GetLocation() OptWireExceptionLocation {
 	return s.Location
+}
+
+// GetCause returns the value of Cause.
+func (s *WireException) GetCause() OptWireExceptionInfo {
+	return s.Cause
+}
+
+// GetErrors returns the value of Errors.
+func (s *WireException) GetErrors() []WireExceptionInfo {
+	return s.Errors
+}
+
+// GetIncomplete returns the value of Incomplete.
+func (s *WireException) GetIncomplete() OptWireExceptionIncomplete {
+	return s.Incomplete
 }
 
 // GetAdditionalProps returns the value of AdditionalProps.
@@ -5818,6 +5939,21 @@ func (s *WireException) SetLocation(val OptWireExceptionLocation) {
 	s.Location = val
 }
 
+// SetCause sets the value of Cause.
+func (s *WireException) SetCause(val OptWireExceptionInfo) {
+	s.Cause = val
+}
+
+// SetErrors sets the value of Errors.
+func (s *WireException) SetErrors(val []WireExceptionInfo) {
+	s.Errors = val
+}
+
+// SetIncomplete sets the value of Incomplete.
+func (s *WireException) SetIncomplete(val OptWireExceptionIncomplete) {
+	s.Incomplete = val
+}
+
 // SetAdditionalProps sets the value of AdditionalProps.
 func (s *WireException) SetAdditionalProps(val WireExceptionAdditional) {
 	s.AdditionalProps = val
@@ -5826,6 +5962,66 @@ func (s *WireException) SetAdditionalProps(val WireExceptionAdditional) {
 type WireExceptionAdditional map[string]jx.Raw
 
 func (s *WireExceptionAdditional) init() WireExceptionAdditional {
+	m := *s
+	if m == nil {
+		m = map[string]jx.Raw{}
+		*s = m
+	}
+	return m
+}
+
+type WireExceptionIncomplete string
+
+const (
+	WireExceptionIncompleteCycle      WireExceptionIncomplete = "cycle"
+	WireExceptionIncompleteLimit      WireExceptionIncomplete = "limit"
+	WireExceptionIncompleteUnreadable WireExceptionIncomplete = "unreadable"
+)
+
+// AllValues returns all WireExceptionIncomplete values.
+func (WireExceptionIncomplete) AllValues() []WireExceptionIncomplete {
+	return []WireExceptionIncomplete{
+		WireExceptionIncompleteCycle,
+		WireExceptionIncompleteLimit,
+		WireExceptionIncompleteUnreadable,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s WireExceptionIncomplete) MarshalText() ([]byte, error) {
+	switch s {
+	case WireExceptionIncompleteCycle:
+		return []byte(s), nil
+	case WireExceptionIncompleteLimit:
+		return []byte(s), nil
+	case WireExceptionIncompleteUnreadable:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *WireExceptionIncomplete) UnmarshalText(data []byte) error {
+	switch WireExceptionIncomplete(data) {
+	case WireExceptionIncompleteCycle:
+		*s = WireExceptionIncompleteCycle
+		return nil
+	case WireExceptionIncompleteLimit:
+		*s = WireExceptionIncompleteLimit
+		return nil
+	case WireExceptionIncompleteUnreadable:
+		*s = WireExceptionIncompleteUnreadable
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/Wire_exceptionInfo
+type WireExceptionInfo map[string]jx.Raw
+
+func (s *WireExceptionInfo) init() WireExceptionInfo {
 	m := *s
 	if m == nil {
 		m = map[string]jx.Raw{}

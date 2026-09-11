@@ -72,7 +72,7 @@ ci-vm:
 	$(MAKE) build-server
 	node scripts/test-service.mjs
 	$(MAKE) test-integration
-	yarn playwright install $(PLAYWRIGHT_INSTALL_FLAGS) chromium
+	yarn playwright install $(PLAYWRIGHT_INSTALL_FLAGS) chromium firefox webkit
 	node scripts/test-dev.mjs
 	yarn test:browser
 

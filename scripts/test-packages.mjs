@@ -14,7 +14,12 @@ try {
     join(sandbox, 'package.json'),
     JSON.stringify({ private: true, type: 'module', dependencies })
   )
-  execFileSync('yarn', ['install', '--non-interactive'], { cwd: sandbox, stdio: 'inherit' })
+  // Yarn 1 caches file tarballs by location/version; a rebuilt same-version archive
+  // must not accidentally test an older cached package. Keep this cache isolated.
+  execFileSync('yarn', ['install', '--non-interactive', '--cache-folder', join(sandbox, 'cache')], {
+    cwd: sandbox,
+    stdio: 'inherit',
+  })
   execFileSync(
     process.execPath,
     [
@@ -24,9 +29,14 @@ try {
     import assert from 'node:assert/strict';
     import * as sdk from '@gopherex/errotel-sdk';
     import { createOtlpClient } from '@gopherex/errotel-sdk/otlp';
+    import { instrumentBrowser, createReactErrorHandler } from '@gopherex/errotel-sdk/browser';
     import { createClient, getCapabilities, investigate } from '@gopherex/errotel-api';
     assert.equal(typeof sdk.createClient, 'function');
     assert.equal(typeof createOtlpClient, 'function');
+    assert.equal(typeof instrumentBrowser, 'function');
+    assert.equal(typeof createReactErrorHandler, 'function');
+    assert.equal(typeof sdk.redactKeys, 'function');
+    assert.equal(typeof sdk.SDK_VERSION, 'string');
     const client = createClient({baseUrl:'http://example.invalid', fetch:async () =>
       new Response(JSON.stringify({source:'isolated-consumer'}),{headers:{'Content-Type':'application/json'}})});
     const result = await getCapabilities({client,throwOnError:true});

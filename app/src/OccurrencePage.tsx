@@ -174,6 +174,20 @@ export function OccurrencePage({
               ) : (
                 <NoData text="No stacktrace was captured." />
               )}
+              {envelope &&
+                (envelope.exception.cause ||
+                  envelope.exception.errors ||
+                  envelope.exception.incomplete) && (
+                  <details>
+                    <summary>Exception causes</summary>
+                    <JsonPanel value={envelope.exception} />
+                  </details>
+                )}
+              {!!envelope?.diagnostics?.length && (
+                <Alert color="yellow" title="Some diagnostic data could not be captured">
+                  <JsonPanel value={envelope.diagnostics} />
+                </Alert>
+              )}
               {detail.exception.location && (
                 <details>
                   <summary>Reported location</summary>

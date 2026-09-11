@@ -102,6 +102,12 @@
       "additionalProperties": {
         "$ref": "#/$defs/json"
       }
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/diagnostic"
+      }
     }
   },
   "required": [
@@ -293,6 +299,22 @@
           },
           "required": [],
           "additionalProperties": true
+        },
+        "cause": {
+          "$ref": "#/$defs/exceptionInfo"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/exceptionInfo"
+          }
+        },
+        "incomplete": {
+          "enum": [
+            "cycle",
+            "limit",
+            "unreadable"
+          ]
         }
       },
       "required": [
@@ -412,6 +434,37 @@
           "additionalProperties": true
         }
       ]
+    },
+    "exceptionInfo": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "stacktrace": {
+          "type": "string"
+        },
+        "cause": {
+          "$ref": "#/$defs/exceptionInfo"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/exceptionInfo"
+          }
+        },
+        "incomplete": {
+          "enum": [
+            "cycle",
+            "limit",
+            "unreadable"
+          ]
+        }
+      },
+      "additionalProperties": true
     }
   }
 }

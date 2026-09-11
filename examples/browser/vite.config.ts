@@ -3,6 +3,7 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
   root: resolve(import.meta.dirname),
+  optimizeDeps: { include: ['react', 'react-dom/client'] },
   server: {
     host: '127.0.0.1',
     port: 14173,

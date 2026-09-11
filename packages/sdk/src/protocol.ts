@@ -56,7 +56,17 @@ export type HistoryEntry = HistoryBase & (
     }
 );
 
-export interface ExceptionData {
+export interface ExceptionInfo {
+  readonly cause?: ExceptionInfo;
+  readonly errors?: readonly ExceptionInfo[];
+  /** Chain could not be read completely; never implies a complete root cause. */
+  readonly incomplete?: 'cycle' | 'limit' | 'unreadable';
+  readonly type?: string;
+  readonly message?: string;
+  readonly stacktrace?: string;
+}
+
+export interface ExceptionData extends ExceptionInfo {
   readonly type?: string;
   readonly message?: string;
   readonly stacktrace?: string;
@@ -96,6 +106,8 @@ export interface DebugEnvelopeV1 {
   };
   readonly groupKey?: string;
   readonly extensions?: { readonly [namespace: string]: JsonValue };
+  /** Capture-local omissions; codes only, no rejected user data. */
+  readonly diagnostics?: readonly CaptureDiagnostic[];
 }
 
 /** This describes the synchronous emit attempt, NOT durable delivery. */
